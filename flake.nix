@@ -9,12 +9,22 @@
   outputs = inputs @ {flake-parts, ...}:
     flake-parts.lib.mkFlake {inherit inputs;} {
       systems = ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"];
-      perSystem = {pkgs, ...}: {
+      perSystem = {pkgs, ...}: rec {
+        packages = {
+          swarm = pkgs.stdenv.mkDerivation {
+            name = "drone-swarm-simulation";
+
+            src = ./.;
+
+            buildInputs = with pkgs; [
+              clang-tools
+              cmake
+            ];
+          };
+        };
+
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            clang-tools
-            gcc
-          ];
+          inputsFrom = [packages.swarm];
         };
 
         formatter = pkgs.alejandra;
