@@ -13,7 +13,8 @@ Checks: >
     -*-magic-numbers,
     -cppcoreguidelines-pro-bounds-pointer-arithmetic,
     -cppcoreguidelines-pro-type-reinterpret-cast,
-    -bugprone-easily-swappable-parameters
+    -bugprone-easily-swappable-parameters,
+    -cppcoreguidelines-owning-memory
 
 CheckOptions:
     # - key: readability-identifier-length.IgnoredParameterNames
