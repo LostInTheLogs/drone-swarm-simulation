@@ -40,8 +40,8 @@ class IpcMessageQueue {
 
         int result = 0;
         while (true) {
-            result = msgsnd(queue_id_, &msg, sizeof(PayloadType),
-                            static_cast<int>(flags));
+            result =
+                msgsnd(id_, &msg, sizeof(PayloadType), static_cast<int>(flags));
             const auto interrupted = result == -1 && errno == EINTR;
             if (!interrupted) {
                 break;
@@ -50,7 +50,7 @@ class IpcMessageQueue {
 
         if (result == -1) {
             return std::unexpected(
-                IpcError(IpcType::MESSAGE_QUEUE, key_, queue_id_, errno));
+                IpcError(IpcType::MESSAGE_QUEUE, key_, id_, errno));
         }
 
         return {};
@@ -70,7 +70,7 @@ class IpcMessageQueue {
         int result = 0;
 
         while (true) {
-            result = msgrcv(queue_id_, &msg, sizeof(PayloadType),
+            result = msgrcv(id_, &msg, sizeof(PayloadType),
                             static_cast<long>(type), static_cast<int>(flags));
             const auto interrupted = result == -1 && errno == EINTR;
             if (!interrupted) {
@@ -80,7 +80,7 @@ class IpcMessageQueue {
 
         if (result == -1) {
             return std::unexpected(
-                IpcError(IpcType::MESSAGE_QUEUE, key_, queue_id_, errno));
+                IpcError(IpcType::MESSAGE_QUEUE, key_, id_, errno));
         }
 
         return msg.payload;
@@ -96,6 +96,6 @@ class IpcMessageQueue {
     };
 
     key_t key_;
-    int queue_id_;
+    int id_;
     bool owner_;
 };

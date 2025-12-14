@@ -9,10 +9,10 @@
 using std::expected, std::unexpected;
 
 IpcMessageQueue::IpcMessageQueue(key_t key, int queue_id, bool owner)
-    : key_(key), queue_id_(queue_id), owner_(owner) {};
+    : key_(key), id_(queue_id), owner_(owner) {};
 
 IpcMessageQueue::IpcMessageQueue(IpcMessageQueue&& other) noexcept
-    : key_(other.key_), queue_id_(other.queue_id_), owner_(other.owner_) {
+    : key_(other.key_), id_(other.id_), owner_(other.owner_) {
     other.owner_ = false;
 }
 
@@ -25,7 +25,7 @@ auto IpcMessageQueue::operator=(IpcMessageQueue&& other) noexcept
         auto removed = Remove();
     }
     key_ = other.key_;
-    queue_id_ = other.queue_id_;
+    id_ = other.id_;
     owner_ = other.owner_;
     other.owner_ = false;
 
@@ -39,7 +39,7 @@ IpcMessageQueue::~IpcMessageQueue() {
 }
 
 auto IpcMessageQueue::Copy() const -> IpcMessageQueue {
-    return IpcMessageQueue(key_, queue_id_, false);
+    return IpcMessageQueue(key_, id_, false);
 }
 
 auto IpcMessageQueue::Create(MsgQueueKey queue_key, unsigned int permissions)
@@ -65,10 +65,10 @@ auto IpcMessageQueue::Get(MsgQueueKey queue_key)
 
 auto IpcMessageQueue::Remove() -> expected<void, IpcError> {
     if (owner_) {
-        auto success = msgctl(queue_id_, IPC_RMID, nullptr);
+        auto success = msgctl(id_, IPC_RMID, nullptr);
         if (success == -1) {
             return unexpected(
-                IpcError(IpcType::MESSAGE_QUEUE, key_, queue_id_, errno));
+                IpcError(IpcType::MESSAGE_QUEUE, key_, id_, errno));
         }
     }
     owner_ = false;

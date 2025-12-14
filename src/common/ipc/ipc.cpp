@@ -16,8 +16,8 @@ auto IpcError::IpcTypeToStr(IpcType ipc_type) -> const char* {
     switch (ipc_type) {
         case IpcType::MESSAGE_QUEUE:
             return "message queue";
-        case IpcType::SEMAPHORE:
-            return "semaphore";
+        case IpcType::SEMAPHORE_SET:
+            return "semaphore set";
         case IpcType::SHARED_MEMORY:
             return "shared memory";
     }

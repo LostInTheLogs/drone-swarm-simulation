@@ -9,7 +9,13 @@ enum class MsgQueueKey : key_t { MAIN = 33889 };
 // NOLINTNEXTLINE(performance-enum-size)
 enum class MessageTypeId : long { LOGGER = 1 };
 
-enum class IpcType : uint8_t { MESSAGE_QUEUE, SEMAPHORE, SHARED_MEMORY };
+// NOLINTNEXTLINE(performance-enum-size)
+enum class SemaphoreSetKey : key_t { MAIN = 33889 };
+
+// NOLINTNEXTLINE(performance-enum-size)
+enum class SemaphoreId : int { GRACEFUL_EXIT, SEMAPHORE_NUM };
+
+enum class IpcType : uint8_t { MESSAGE_QUEUE, SEMAPHORE_SET, SHARED_MEMORY };
 
 class IpcError : public std::system_error {
   public:
