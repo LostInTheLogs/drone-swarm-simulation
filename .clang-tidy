@@ -14,7 +14,8 @@ Checks: >
     -cppcoreguidelines-pro-bounds-pointer-arithmetic,
     -cppcoreguidelines-pro-type-reinterpret-cast,
     -bugprone-easily-swappable-parameters,
-    -cppcoreguidelines-owning-memory
+    -cppcoreguidelines-owning-memory,
+    -google-runtime-int
 
 CheckOptions:
     # - key: readability-identifier-length.IgnoredParameterNames

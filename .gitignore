@@ -42,6 +42,9 @@
 
 build
 
+#clangd
+.cache
+
 # nix
 .direnv
 *.out
