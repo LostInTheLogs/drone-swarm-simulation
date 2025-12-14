@@ -6,11 +6,12 @@
 #include <cstring>
 #include <expected>
 #include <stdexcept>
+#include <system_error>
 #include <vector>
 
 enum class IpcType : uint8_t { MESSAGE_QUEUE, SEMAPHORE, SHARED_MEMORY };
 
-class IpcError : public std::runtime_error {
+class IpcError : public std::system_error {
   public:
     explicit IpcError(IpcType ipc_type, key_t key, int ipc_id, int error);
 

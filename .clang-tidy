@@ -10,7 +10,7 @@ Checks: >
     -zircon-*,
     -misc-non-private-member-variables-in-classes,
     -google-readability-todo,
-    -*-magic-numbers,
+    -cppcoreguidelines-avoid-magic-numbers,
     -cppcoreguidelines-pro-bounds-pointer-arithmetic,
     -cppcoreguidelines-pro-type-reinterpret-cast,
     -bugprone-easily-swappable-parameters,

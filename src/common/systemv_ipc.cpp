@@ -11,9 +11,9 @@
 using std::expected, std::unexpected, std::format;
 
 IpcError::IpcError(IpcType ipc_type, key_t key, int ipc_id, int error)
-    : std::runtime_error(format("IPC Error in {} key '{}' id '{}': {}",
-                                IpcTypeToStr(ipc_type), key, ipc_id,
-                                std::system_category().message(error))) {}
+    : std::system_error(error, std::generic_category(),
+                        format("IPC Error in {} key '{}' id '{}'",
+                               IpcTypeToStr(ipc_type), key, ipc_id)) {}
 
 auto IpcError::IpcTypeToStr(IpcType ipc_type) -> const char* {
     switch (ipc_type) {

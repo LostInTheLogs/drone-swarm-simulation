@@ -4,13 +4,9 @@ project(DroneSwarm LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-
-file(GLOB_RECURSE SRC_FILES src/*.cpp)
-
-# Create executable
-add_executable(${PROJECT_NAME} ${SRC_FILES})
-target_compile_options(${PROJECT_NAME} PRIVATE
+add_compile_options(
     -Wall
     -Wextra
     -Wpedantic
@@ -20,14 +16,24 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     -Werror
 )
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wlifetime)
+    add_compile_options(-Wlifetime)
 endif()
-
-target_include_directories(${PROJECT_NAME} PRIVATE src)
-
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(${PROJECT_NAME} PRIVATE
+    add_compile_options(
         -fsanitize=address,undefined
         -fno-omit-frame-pointer)
-    target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
+    add_link_options(-fsanitize=address,undefined)
 endif()
+
+file(GLOB_RECURSE COMMON_SRC src/common/*.cpp)
+add_library(common STATIC ${COMMON_SRC})
+target_include_directories(common PUBLIC src/common)
+
+file(GLOB_RECURSE APP1_SRC src/main/*.cpp)
+add_executable(DroneSwarm ${APP1_SRC})
+target_link_libraries(DroneSwarm PRIVATE common)
+
+file(GLOB_RECURSE APP2_SRC src/child/*.cpp)
+add_executable(child ${APP2_SRC})
+target_link_libraries(child PRIVATE common)
+
