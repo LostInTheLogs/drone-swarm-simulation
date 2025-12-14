@@ -4,7 +4,7 @@ https://github.com/LostInTheLogs/drone-swarm-simulation
 
 # Opis zadania
 
-Rój autonomicznych dronów liczy początkowo N egzemplarzy. Drony startują (i lądują)
+Rój autonomicznych dronów liczy początkowo $N$ egzemplarzy. Drony startują (i lądują)
 z ukrytej platformy (bazy), na której w danym momencie może znajdować
 się co najwyżej $P (P < N/2)$ dronów.
 
@@ -40,7 +40,37 @@ bazie).
 
 Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 
+# Krótki opis
+
+## Parametry
+
+- $N$ - początkowa ilość dronów
+- $P$ ($P<N/2$) - maksymalna ilość dronów w bazie
+- $T_{1i}$ - czas ładowania
+- $T_{2i} = 2.5 \cdot T_{1i}$ - czas pracy baterii
+- $T_k$ = interwał uzupełniania braków dronów
+- $X_i$ = cylk życia drona w ilościach ładowań
+
+## Baza (jedna)
+
+- dwa jednokierunkowe w danej chwili wejścia/wyjścia
+- Maksymalnie P dronów w bazie
+
+## Dron
+
+- po ładowaniu bateri $T_1$ opuszcza bazę
+- maksymalny czas lotu $T_2$
+- powrót do bazy przy baterii < 20%
+- zniszczenie przy baterii = 0%
+- po $X_i$ ładowaniach utilizacja
+- **sig3**: samobójstwo (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%
+
+## Operator (jeden)
+
+- co $T_k$ uzupełnia braki dronów (jeśli jest miejsce w bazie)
+- **sig1**: zwiększa maksymalną ilość dronów w bazie 2x (?)
+- **sig2**: zmniejsza maksymalną ilość dronów w bazie 2x (?)
+
 # Testy
 
 TODO
-
