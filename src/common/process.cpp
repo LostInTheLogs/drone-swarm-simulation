@@ -6,6 +6,7 @@
 
 #include <csignal>
 #include <system_error>
+#include <vector>
 
 Process::Process(pid_t process_id) : process_id_(process_id) {}
 

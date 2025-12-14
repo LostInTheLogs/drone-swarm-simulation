@@ -1,35 +1,46 @@
-#include "systemv_ipc.h"
+#include "msg_queue.h"
 
 #include <sys/ipc.h>
 #include <sys/msg.h>
 
 #include <cassert>
 #include <cstring>
-#include <format>
-#include <system_error>
 
-using std::expected, std::unexpected, std::format;
-
-IpcError::IpcError(IpcType ipc_type, key_t key, int ipc_id, int error)
-    : std::system_error(error, std::generic_category(),
-                        format("IPC Error in {} key '{}' id '{}'",
-                               IpcTypeToStr(ipc_type), key, ipc_id)) {}
-
-auto IpcError::IpcTypeToStr(IpcType ipc_type) -> const char* {
-    switch (ipc_type) {
-        case IpcType::MESSAGE_QUEUE:
-            return "message queue";
-        case IpcType::SEMAPHORE:
-            return "semaphore";
-        case IpcType::SHARED_MEMORY:
-            return "shared memory";
-    }
-
-    return "";
-}
+using std::expected, std::unexpected;
 
 IpcMessageQueue::IpcMessageQueue(key_t key, int queue_id, bool owner)
     : key_(key), queue_id_(queue_id), owner_(owner) {};
+
+IpcMessageQueue::IpcMessageQueue(IpcMessageQueue&& other) noexcept
+    : key_(other.key_), queue_id_(other.queue_id_), owner_(other.owner_) {
+    other.owner_ = false;
+}
+
+auto IpcMessageQueue::operator=(IpcMessageQueue&& other) noexcept
+    -> IpcMessageQueue& {
+    if (this == &other) {
+        return *this;
+    }
+    if (owner_) {
+        auto removed = Remove();
+    }
+    key_ = other.key_;
+    queue_id_ = other.queue_id_;
+    owner_ = other.owner_;
+    other.owner_ = false;
+
+    return *this;
+}
+
+IpcMessageQueue::~IpcMessageQueue() {
+    if (owner_) {
+        auto removed = Remove();
+    }
+}
+
+auto IpcMessageQueue::Copy() const -> IpcMessageQueue {
+    return IpcMessageQueue(key_, queue_id_, false);
+}
 
 auto IpcMessageQueue::Create(MsgQueueKey queue_key, unsigned int permissions)
     -> expected<IpcMessageQueue, IpcError> {
@@ -52,14 +63,15 @@ auto IpcMessageQueue::Get(MsgQueueKey queue_key)
     return IpcMessageQueue(key, queue_id);
 }
 
-auto IpcMessageQueue::Remove() const -> expected<void, IpcError> {
+auto IpcMessageQueue::Remove() -> expected<void, IpcError> {
     if (owner_) {
         auto success = msgctl(queue_id_, IPC_RMID, nullptr);
         if (success == -1) {
-            return std::unexpected(
+            return unexpected(
                 IpcError(IpcType::MESSAGE_QUEUE, key_, queue_id_, errno));
         }
     }
+    owner_ = false;
 
     return {};
 }

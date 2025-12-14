@@ -2,34 +2,18 @@
 
 #include <sys/msg.h>
 
-#include <cstdint>
 #include <cstring>
 #include <expected>
-#include <system_error>
 
-// NOLINTNEXTLINE(performance-enum-size)
-enum class MsgQueueKey : key_t { MAIN };
-
-// NOLINTNEXTLINE(performance-enum-size)
-enum class MessageTypeId : int { LOGGER };
-
-enum class IpcType : uint8_t { MESSAGE_QUEUE, SEMAPHORE, SHARED_MEMORY };
-
-class IpcError : public std::system_error {
-  public:
-    explicit IpcError(IpcType ipc_type, key_t key, int ipc_id, int error);
-
-  private:
-    static auto IpcTypeToStr(IpcType ipc_type) -> const char *;
-};
+#include "ipc/ipc.h"
 
 class IpcMessageQueue {
   public:
-    IpcMessageQueue(IpcMessageQueue &&) = default;
-    IpcMessageQueue(const IpcMessageQueue &) = delete;
-    auto operator=(IpcMessageQueue &&) -> IpcMessageQueue & = default;
-    auto operator=(const IpcMessageQueue &) -> IpcMessageQueue & = delete;
-    ~IpcMessageQueue() = default;
+    IpcMessageQueue(IpcMessageQueue&&) noexcept;
+    auto operator=(IpcMessageQueue&&) noexcept -> IpcMessageQueue&;
+    IpcMessageQueue(const IpcMessageQueue&) = delete;
+    auto operator=(const IpcMessageQueue&) -> IpcMessageQueue& = delete;
+    ~IpcMessageQueue();
 
     [[nodiscard]]
     static auto Create(MsgQueueKey queue_key, unsigned int permissions)
@@ -37,18 +21,20 @@ class IpcMessageQueue {
     [[nodiscard]]
     static auto Get(MsgQueueKey queue_key)
         -> std::expected<IpcMessageQueue, IpcError>;
+    [[nodiscard]] auto Copy() const -> IpcMessageQueue;
 
     [[nodiscard]]
-    auto Remove() const -> std::expected<void, IpcError>;
+    auto Remove() -> std::expected<void, IpcError>;
 
     template <typename PayloadType>
     [[nodiscard]]
-    auto Send(PayloadType payload, long type, bool wait = true) const
+    auto Send(PayloadType payload, MessageTypeId type, bool wait = true) const
         -> std::expected<void, IpcError> {
         static_assert(std::is_trivially_copyable_v<PayloadType>,
                       "Payload must be trivially copyable");
 
-        const Message<PayloadType> msg{.type = type, .payload = payload};
+        const Message<PayloadType> msg{.type = static_cast<long>(type),
+                                       .payload = payload};
 
         const auto flags = (wait ? 0U : IPC_NOWAIT);
 
@@ -72,7 +58,7 @@ class IpcMessageQueue {
 
     template <typename PayloadType>
     [[nodiscard]]
-    auto Receive(long type, bool wait = true) const
+    auto Receive(MessageTypeId type, bool wait = true) const
         -> std::expected<PayloadType, IpcError> {
         static_assert(std::is_trivially_copyable_v<PayloadType>,
                       "Payload must be trivially copyable");
@@ -84,8 +70,8 @@ class IpcMessageQueue {
         int result = 0;
 
         while (true) {
-            result = msgrcv(queue_id_, &msg, sizeof(PayloadType), type,
-                            static_cast<int>(flags));
+            result = msgrcv(queue_id_, &msg, sizeof(PayloadType),
+                            static_cast<long>(type), static_cast<int>(flags));
             const auto interrupted = result == -1 && errno == EINTR;
             if (!interrupted) {
                 break;

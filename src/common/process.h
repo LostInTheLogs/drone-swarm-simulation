@@ -1,9 +1,7 @@
 #pragma once
 
 #include <expected>
-#include <functional>
 #include <span>
-#include <stdexcept>
 #include <system_error>
 
 class Process {
