@@ -31,8 +31,9 @@ auto IpcError::IpcTypeToStr(IpcType ipc_type) -> const char* {
 IpcMessageQueue::IpcMessageQueue(key_t key, int queue_id, bool owner)
     : key_(key), queue_id_(queue_id), owner_(owner) {};
 
-auto IpcMessageQueue::Create(key_t key, unsigned int permissions)
+auto IpcMessageQueue::Create(MsgQueueKey queue_key, unsigned int permissions)
     -> expected<IpcMessageQueue, IpcError> {
+    auto key = static_cast<key_t>(queue_key);
     auto flags = permissions | IPC_CREAT | IPC_EXCL;
     auto queue_id = msgget(key, static_cast<int>(flags));
     if (queue_id < 0) {
@@ -41,7 +42,9 @@ auto IpcMessageQueue::Create(key_t key, unsigned int permissions)
     return IpcMessageQueue(key, queue_id, true);
 }
 
-auto IpcMessageQueue::Get(key_t key) -> expected<IpcMessageQueue, IpcError> {
+auto IpcMessageQueue::Get(MsgQueueKey queue_key)
+    -> expected<IpcMessageQueue, IpcError> {
+    auto key = static_cast<key_t>(queue_key);
     auto queue_id = msgget(key, 0);
     if (queue_id < 0) {
         return unexpected(IpcError(IpcType::MESSAGE_QUEUE, key, -1, errno));

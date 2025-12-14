@@ -5,9 +5,13 @@
 #include <cstdint>
 #include <cstring>
 #include <expected>
-#include <stdexcept>
 #include <system_error>
-#include <vector>
+
+// NOLINTNEXTLINE(performance-enum-size)
+enum class MsgQueueKey : key_t { MAIN };
+
+// NOLINTNEXTLINE(performance-enum-size)
+enum class MessageTypeId : int { LOGGER };
 
 enum class IpcType : uint8_t { MESSAGE_QUEUE, SEMAPHORE, SHARED_MEMORY };
 
@@ -28,10 +32,11 @@ class IpcMessageQueue {
     ~IpcMessageQueue() = default;
 
     [[nodiscard]]
-    static auto Create(key_t key, unsigned int permissions)
+    static auto Create(MsgQueueKey queue_key, unsigned int permissions)
         -> std::expected<IpcMessageQueue, IpcError>;
     [[nodiscard]]
-    static auto Get(key_t key) -> std::expected<IpcMessageQueue, IpcError>;
+    static auto Get(MsgQueueKey queue_key)
+        -> std::expected<IpcMessageQueue, IpcError>;
 
     [[nodiscard]]
     auto Remove() const -> std::expected<void, IpcError>;
