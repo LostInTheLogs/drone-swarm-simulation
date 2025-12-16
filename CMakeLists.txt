@@ -33,7 +33,7 @@ file(GLOB_RECURSE APP1_SRC src/main/*.cpp)
 add_executable(DroneSwarm ${APP1_SRC})
 target_link_libraries(DroneSwarm PRIVATE common)
 
-file(GLOB_RECURSE APP2_SRC src/child/*.cpp)
-add_executable(child ${APP2_SRC})
-target_link_libraries(child PRIVATE common)
+file(GLOB_RECURSE APP2_SRC src/logger/*.cpp)
+add_executable(logger ${APP2_SRC})
+target_link_libraries(logger PRIVATE common)
 

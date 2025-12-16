@@ -32,21 +32,23 @@ class Logger {
 
     explicit Logger(std::string_view name, IpcMessageQueue queue);
 
-    static void PrintLog(Payload log);
-    static auto LogLevelToStr(LogLevel level) -> std::string;
-
     PayloadSenderT name_;
     IpcMessageQueue queue_;
 
-    friend class LogReceiver;
+    friend class LogPrinter;
 };
 
-class LogReceiver {
+class LogPrinter {
   public:
-    static auto Create() -> std::expected<LogReceiver, IpcError>;
+    static auto Create() -> std::expected<LogPrinter, IpcError>;
     auto ReceiveForever() -> std::expected<void, IpcError>;
 
+    static void PrintError(std::string_view sender, std::string_view msg);
+
   private:
-    explicit LogReceiver(IpcMessageQueue queue);
+    static auto FormatLog(Logger::Payload log) -> std::string;
+    static auto LogLevelToStr(Logger::LogLevel level) -> std::string;
+
+    explicit LogPrinter(IpcMessageQueue queue);
     IpcMessageQueue queue_;
 };

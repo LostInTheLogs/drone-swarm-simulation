@@ -6,6 +6,7 @@
 #include <expected>
 
 #include "ipc/ipc.h"
+#include "process.h"
 
 class IpcMessageQueue {
   public:
@@ -18,9 +19,16 @@ class IpcMessageQueue {
     [[nodiscard]]
     static auto Create(MsgQueueKey queue_key, unsigned int permissions)
         -> std::expected<IpcMessageQueue, IpcError>;
+
+    [[nodiscard]]
+    static auto GetOrCreate(MsgQueueKey queue_key, unsigned int permissions,
+                            bool owner = false)
+        -> std::expected<IpcMessageQueue, IpcError>;
+
     [[nodiscard]]
     static auto Get(MsgQueueKey queue_key)
         -> std::expected<IpcMessageQueue, IpcError>;
+
     [[nodiscard]] auto Copy() const -> IpcMessageQueue;
 
     [[nodiscard]]
@@ -39,7 +47,7 @@ class IpcMessageQueue {
         const auto flags = (wait ? 0U : IPC_NOWAIT);
 
         int result = 0;
-        while (true) {
+        while (CurrentProcess::Get().terminate_sig_received != 1) {
             result =
                 msgsnd(id_, &msg, sizeof(PayloadType), static_cast<int>(flags));
             const auto interrupted = result == -1 && errno == EINTR;
@@ -50,7 +58,7 @@ class IpcMessageQueue {
 
         if (result == -1) {
             return std::unexpected(
-                IpcError(IpcType::MESSAGE_QUEUE, key_, id_, errno));
+                IpcError(IpcType::MESSAGE_QUEUE, -1, id_, errno));
         }
 
         return {};
@@ -69,7 +77,7 @@ class IpcMessageQueue {
 
         int result = 0;
 
-        while (true) {
+        while (CurrentProcess::Get().terminate_sig_received != 1) {
             result = msgrcv(id_, &msg, sizeof(PayloadType),
                             static_cast<long>(type), static_cast<int>(flags));
             const auto interrupted = result == -1 && errno == EINTR;
@@ -80,14 +88,14 @@ class IpcMessageQueue {
 
         if (result == -1) {
             return std::unexpected(
-                IpcError(IpcType::MESSAGE_QUEUE, key_, id_, errno));
+                IpcError(IpcType::MESSAGE_QUEUE, -1, id_, errno));
         }
 
         return msg.payload;
     }
 
   private:
-    explicit IpcMessageQueue(key_t key, int queue_id, bool owner = false);
+    explicit IpcMessageQueue(int queue_id, bool owner = false);
 
     template <typename PayloadType>
     struct Message {
@@ -95,7 +103,10 @@ class IpcMessageQueue {
         PayloadType payload;
     };
 
-    key_t key_;
+    [[nodiscard]]
+    static auto GetQueueId(MsgQueueKey queue_key, unsigned int flags = 0)
+        -> std::expected<int, IpcError>;
+
     int id_;
     bool owner_;
 };

@@ -5,6 +5,8 @@
 #include <iostream>
 #include <utility>
 
+#include "process.h"
+
 using std::expected, std::unexpected, std::string_view;
 
 namespace {
@@ -23,16 +25,13 @@ Logger::Logger(string_view name, IpcMessageQueue queue)
 }
 
 auto Logger::Create(string_view name) -> expected<Logger, IpcError> {
-    static auto message_queue = IpcMessageQueue::Get(MsgQueueKey::MAIN).value();
-    return Logger(name, message_queue.Copy());
-}
-
-void Logger::PrintLog(Payload log) {
-    string_view msg(log.msg);
-    string_view sender(log.sender);
-    auto level = LogLevelToStr(log.level);
-
-    std::cout << format("[{:>5}] {}: {}", level, sender, msg) << '\n';
+    static auto queue = IpcMessageQueue::Get(MsgQueueKey::MAIN);
+    if (!queue) {
+        LogPrinter::PrintError(name,
+                               std::format("Failed getting queue in logger: {}",
+                                           queue.error().what()));
+    }
+    return Logger(name, queue->Copy());
 }
 
 void Logger::Log(LogLevel level, string_view msg) {
@@ -40,7 +39,12 @@ void Logger::Log(LogLevel level, string_view msg) {
 
     CopyStrToArray(msg, payload.msg);
 
-    queue_.Send(payload, MessageTypeId::LOGGER).value();
+    auto sent = queue_.Send(payload, MessageTypeId::LOGGER);
+    if (!sent) {
+        LogPrinter::PrintError(
+            string_view(name_),
+            std::format("Sending logs failed: {}", sent.error().what()));
+    }
 }
 
 void Logger::Debug(string_view msg) {
@@ -56,36 +60,59 @@ void Logger::Error(string_view msg) {
     Logger::Log(LogLevel::ERROR, msg);
 }
 
-auto Logger::LogLevelToStr(Logger::LogLevel level) -> std::string {
-    switch (level) {
-        case DEBUG:
-            return "DEBUG";
-        case INFO:
-            return "INFO";
-        case WARNING:
-            return "WARN";
-        case ERROR:
-            return "ERROR";
-    }
-    return {};
-}
+LogPrinter::LogPrinter(IpcMessageQueue queue) : queue_(std::move(queue)) {}
 
-LogReceiver::LogReceiver(IpcMessageQueue queue) : queue_(std::move(queue)) {}
-
-auto LogReceiver::Create() -> expected<LogReceiver, IpcError> {
+auto LogPrinter::Create() -> expected<LogPrinter, IpcError> {
     static auto queue = IpcMessageQueue::Create(MsgQueueKey::MAIN, 0666);
     if (!queue) {
         return unexpected(queue.error());
     }
 
-    return LogReceiver(std::move(*queue));
+    return LogPrinter(std::move(*queue));
 }
-auto LogReceiver::ReceiveForever() -> expected<void, IpcError> {
-    while (true) {
+
+auto LogPrinter::FormatLog(Logger::Payload log) -> std::string {
+    string_view msg(log.msg);
+    string_view sender(log.sender);
+    auto level = LogLevelToStr(log.level);
+
+    return format("[{:>5}] {}: {}\n", level, sender, msg);
+}
+
+auto LogPrinter::LogLevelToStr(Logger::LogLevel level) -> std::string {
+    switch (level) {
+        case Logger::DEBUG:
+            return "DEBUG";
+        case Logger::INFO:
+            return "INFO";
+        case Logger::WARNING:
+            return "WARN";
+        case Logger::ERROR:
+            return "ERROR";
+    }
+    return {};
+}
+
+auto LogPrinter::ReceiveForever() -> expected<void, IpcError> {
+    while (CurrentProcess::Get().terminate_sig_received != 1) {
         auto message = queue_.Receive<Logger::Payload>(MessageTypeId::LOGGER);
         if (!message) {
+            if (message.error().code() == std::errc::interrupted) {
+                return {};
+            }
             return unexpected(message.error());
         }
-        Logger::PrintLog(*message);
+        const auto formatted = FormatLog(*message);
+        std::cout << formatted;
     }
+
+    return {};
+}
+
+void LogPrinter::PrintError(std::string_view sender, std::string_view msg) {
+    Logger::Payload payload{.level = Logger::ERROR, .sender = {}, .msg = {}};
+    CopyStrToArray(msg, payload.msg);
+    CopyStrToArray(sender, payload.sender);
+    const auto formatted = FormatLog(payload);
+    std::cerr << formatted;
 }

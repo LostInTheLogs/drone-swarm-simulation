@@ -15,7 +15,9 @@ Checks: >
     -cppcoreguidelines-pro-type-reinterpret-cast,
     -bugprone-easily-swappable-parameters,
     -cppcoreguidelines-owning-memory,
-    -google-runtime-int
+    -google-runtime-int,
+    -cppcoreguidelines-pro-type-vararg,
+    -hicpp-vararg
 
 CheckOptions:
     # - key: readability-identifier-length.IgnoredParameterNames
