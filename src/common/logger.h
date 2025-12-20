@@ -28,10 +28,10 @@ class Logger {
         std::array<char, 256>;  // NOLINT(readability-magic-numbers)
 
     struct Payload {
-        LogLevel level;
-        pid_t sender_pid;
-        PayloadSenderT sender_name;
-        PayloadMsgT msg;
+        LogLevel level{};
+        pid_t sender_pid{};
+        PayloadSenderT sender_name{};
+        PayloadMsgT msg{};
         std::chrono::system_clock::time_point time;
     };
 

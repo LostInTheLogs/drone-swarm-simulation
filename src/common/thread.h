@@ -7,6 +7,7 @@
 #include <functional>
 #include <system_error>
 
+#include "clock.h"
 #include "process.h"
 
 class Thread {
@@ -18,6 +19,12 @@ class Thread {
         -> std::expected<Thread, std::system_error>;
     [[nodiscard]] auto Join() const -> std::expected<void, std::system_error>;
     [[nodiscard]] auto Cancel() const -> std::expected<void, std::system_error>;
+
+    template <class Rep, class Period>
+    static auto SleepFor(const std::chrono::duration<Rep, Period> &dur)
+        -> std::expected<void, std::system_error> {
+        return SleepUntil(MonotonicClock::now() + dur);
+    }
 
     template <class Clock, class Duration>
     static auto SleepUntil(
@@ -50,20 +57,4 @@ class Thread {
 
   private:
     pthread_t thread_id_{};
-};
-
-class ThreadMutex {
-  public:
-    ThreadMutex() = default;
-    ThreadMutex(ThreadMutex &&) = delete;
-    ThreadMutex(const ThreadMutex &) = delete;
-    auto operator=(ThreadMutex &&) = delete;
-    auto operator=(const ThreadMutex &) -> ThreadMutex & = delete;
-    ~ThreadMutex() = default;
-
-    void Lock();
-    void Unlock();
-
-  private:
-    pthread_mutex_t mutex_ = PTHREAD_MUTEX_INITIALIZER;
 };

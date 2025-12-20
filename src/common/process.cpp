@@ -184,8 +184,18 @@ auto CurrentProcess::SignalReady() -> std::expected<void, std::runtime_error> {
     return {};
 }
 
+// void CurrentProcess::RequestTermination() {
+//     terminate_sig_received_mut_.Lock();
+//     terminate_sig_received_ = 1;
+//     terminate_sig_received_mut_.Unlock();
+// }
+
 auto CurrentProcess::TerminateReceived() -> bool {
-    return terminate_sig_received_ == 1;
+    // terminate_sig_received_mut_.Lock();
+    auto ret = terminate_sig_received_ == 1;
+    // terminate_sig_received_mut_.Unlock();
+    return ret;
 }
 
 volatile sig_atomic_t CurrentProcess::terminate_sig_received_ = 0;
+// ThreadMutex CurrentProcess::terminate_sig_received_mut_{};

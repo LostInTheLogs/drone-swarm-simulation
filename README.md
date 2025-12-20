@@ -37,7 +37,6 @@ Napisz program dowódcy systemu, operatora i dronów tak, aby zasymulować cykl
 życia roju dronów. Każdy z dronów jest utylizowany (wycofywany z eksploatacji)
 po pewnym określonym czasie $X_i$, liczonym w ilościach ładowań (pobytów w
 bazie).
-
 Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 
 # Krótki opis
@@ -51,33 +50,31 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 - $T_k$ = interwał uzupełniania braków dronów
 - $X_i$ = cylk życia drona w ilościach ładowań
 
-## Elementy
-
-### Baza
-
-- dwa jednokierunkowe w danej chwili wejścia/wyjścia
-- maksymalnie P dronów w bazie
-
 ## Programy
 
 ### Dowodca
 
-- wysyła sygnały 1, 2 do operatora i 3 do drona.
+- [ ] wysyła sygnały 1, 2 do operatora i 3 do drona.
 
 ### Operator
 
-- co $T_k$ uzupełnia braki dronów (jeśli jest miejsce w bazie)
-- **sig1**: zwiększa maksymalną ilość dronów w bazie 2x (?)
-- **sig2**: zmniejsza maksymalną ilość dronów w bazie 2x (?)
+- [ ] co $T_k$ uzupełnia braki dronów (jeśli jest miejsce w bazie)
+- [ ] **sig1**: zwiększa maksymalną ilość dronów w bazie 2x (?)
+- [ ] **sig2**: zmniejsza maksymalną ilość dronów w bazie 2x (?)
+
+#### Baza
+
+- [ ] dwa jednokierunkowe w danej chwili wejścia/wyjścia
+- [ ] maksymalnie P dronów w bazie
 
 ### Drony
 
-- po ładowaniu bateri $T_1$ opuszcza bazę
-- maksymalny czas lotu $T_2$
-- powrót do bazy przy baterii < 20%
-- zniszczenie przy baterii = 0%
-- po $X_i$ ładowaniach utilizacja
-- **sig3**: samobójstwo (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%
+- [ ] po ładowaniu bateri $T_1$ opuszcza bazę
+- [ ] maksymalny czas lotu $T_2$
+- [ ] powrót do bazy przy baterii < 20%
+- [ ] zniszczenie przy baterii = 0%
+- [ ] po $X_i$ ładowaniach utilizacja
+- [ ] **sig3**: samobójstwo (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%
 
 # Testy
 

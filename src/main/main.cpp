@@ -5,6 +5,7 @@
 
 #include "logger.h"
 #include "process.h"
+#include "thread.h"
 
 namespace {
 auto Err(const auto& val) -> auto& {
@@ -16,6 +17,7 @@ auto Err(const auto& val) -> auto& {
 }  // namespace
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int {
+    using namespace std::chrono_literals;
     try {
         auto logger_process = Err(Process::CreateReady({"./logger"}));
 
@@ -24,7 +26,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
         auto drone_process = Err(Process::Create({"./drone"}));
 
         Err(drone_process.Wait());
-        sleep(1);
+        auto slept = Thread::SleepFor(1s);
         Err(logger_process.TermWait());
     } catch (std::exception& e) {
         LogPrinter::PrintError("main", e.what());

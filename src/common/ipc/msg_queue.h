@@ -44,14 +44,13 @@ class IpcMessageQueue {
         const Message<PayloadType> msg{.type = static_cast<long>(type),
                                        .payload = payload};
 
-        const auto flags = (wait ? 0U : IPC_NOWAIT);
+        const auto flags = static_cast<int>(wait ? 0U : IPC_NOWAIT);
 
         int result = 0;
-        while (!CurrentProcess::TerminateReceived()) {
-            result =
-                msgsnd(id_, &msg, sizeof(PayloadType), static_cast<int>(flags));
+        while (true) {
+            result = msgsnd(id_, &msg, sizeof(PayloadType), flags);
             const auto interrupted = result == -1 && errno == EINTR;
-            if (!interrupted) {
+            if (!interrupted || CurrentProcess::TerminateReceived()) {
                 break;
             }
         }
@@ -77,11 +76,11 @@ class IpcMessageQueue {
 
         int result = 0;
 
-        while (!CurrentProcess::TerminateReceived()) {
+        while (true) {
             result = msgrcv(id_, &msg, sizeof(PayloadType),
                             static_cast<long>(type), static_cast<int>(flags));
             const auto interrupted = result == -1 && errno == EINTR;
-            if (!interrupted) {
+            if (!interrupted || CurrentProcess::TerminateReceived()) {
                 break;
             }
         }

@@ -6,6 +6,7 @@
 #include <system_error>
 
 #include "ipc/pipe.h"
+// #include "thread_utils.h"
 
 class Process {
   public:
@@ -61,10 +62,12 @@ class CurrentProcess : public Process {
 
     static void AddHandler(int signal, void (*handler)(int));
     static auto SignalReady() -> std::expected<void, std::runtime_error>;
+    // static void RequestTermination();
     static auto TerminateReceived() -> bool;
 
   private:
     static volatile sig_atomic_t terminate_sig_received_;
+    // static ThreadMutex terminate_sig_received_mut_;
     CurrentProcess();
 };
 
