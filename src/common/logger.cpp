@@ -1,11 +1,11 @@
 #include "logger.h"
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <format>
 #include <iostream>
 #include <utility>
-
-#include "process.h"
 
 using std::expected, std::unexpected, std::string_view;
 
@@ -27,15 +27,17 @@ Logger::Logger(string_view name, IpcMessageQueue queue)
 auto Logger::Create(string_view name) -> expected<Logger, IpcError> {
     static auto queue = IpcMessageQueue::Get(MsgQueueKey::MAIN);
     if (!queue) {
-        LogPrinter::PrintError(name,
-                               std::format("Failed getting queue in logger: {}",
-                                           queue.error().what()));
+        return std::unexpected(queue.error());
     }
     return Logger(name, queue->Copy());
 }
 
 void Logger::Log(LogLevel level, string_view msg) {
-    Payload payload{.level = level, .sender = name_, .msg = {}};
+    Payload payload{.level = level,
+                    .sender_pid = getpid(),
+                    .sender_name = name_,
+                    .msg = {},
+                    .time = std::chrono::system_clock::now()};
 
     CopyStrToArray(msg, payload.msg);
 
@@ -73,10 +75,11 @@ auto LogPrinter::Create() -> expected<LogPrinter, IpcError> {
 
 auto LogPrinter::FormatLog(Logger::Payload log) -> std::string {
     string_view msg(log.msg);
-    string_view sender(log.sender);
+    string_view sender(log.sender_name);
     auto level = LogLevelToStr(log.level);
 
-    return format("[{:>5}] {}: {}\n", level, sender, msg);
+    return format("[{:%F %T}] {:>5} {}({}): {}\n", log.time, level, sender,
+                  log.sender_pid, msg);
 }
 
 auto LogPrinter::LogLevelToStr(Logger::LogLevel level) -> std::string {
@@ -94,7 +97,7 @@ auto LogPrinter::LogLevelToStr(Logger::LogLevel level) -> std::string {
 }
 
 auto LogPrinter::ReceiveForever() -> expected<void, IpcError> {
-    while (CurrentProcess::Get().terminate_sig_received != 1) {
+    while (true) {
         auto message = queue_.Receive<Logger::Payload>(MessageTypeId::LOGGER);
         if (!message) {
             if (message.error().code() == std::errc::interrupted) {
@@ -110,9 +113,13 @@ auto LogPrinter::ReceiveForever() -> expected<void, IpcError> {
 }
 
 void LogPrinter::PrintError(std::string_view sender, std::string_view msg) {
-    Logger::Payload payload{.level = Logger::ERROR, .sender = {}, .msg = {}};
+    Logger::Payload payload{.level = Logger::ERROR,
+                            .sender_pid = getpid(),
+                            .sender_name = {},
+                            .msg = {},
+                            .time = std::chrono::system_clock::now()};
     CopyStrToArray(msg, payload.msg);
-    CopyStrToArray(sender, payload.sender);
+    CopyStrToArray(sender, payload.sender_name);
     const auto formatted = FormatLog(payload);
     std::cerr << formatted;
 }

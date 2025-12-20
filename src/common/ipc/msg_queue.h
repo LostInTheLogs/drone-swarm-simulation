@@ -47,7 +47,7 @@ class IpcMessageQueue {
         const auto flags = (wait ? 0U : IPC_NOWAIT);
 
         int result = 0;
-        while (CurrentProcess::Get().terminate_sig_received != 1) {
+        while (!CurrentProcess::TerminateReceived()) {
             result =
                 msgsnd(id_, &msg, sizeof(PayloadType), static_cast<int>(flags));
             const auto interrupted = result == -1 && errno == EINTR;
@@ -77,7 +77,7 @@ class IpcMessageQueue {
 
         int result = 0;
 
-        while (CurrentProcess::Get().terminate_sig_received != 1) {
+        while (!CurrentProcess::TerminateReceived()) {
             result = msgrcv(id_, &msg, sizeof(PayloadType),
                             static_cast<long>(type), static_cast<int>(flags));
             const auto interrupted = result == -1 && errno == EINTR;

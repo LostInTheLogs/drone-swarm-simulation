@@ -17,11 +17,6 @@ CurrentProcess& g_curr_process = CurrentProcess::Get();
 
 Process::Process(pid_t process_id) : process_id_(process_id) {}
 
-auto Process::GetCurrent() -> Process {
-    static auto current = Process(getpid());
-    return current;
-}
-
 auto Process::Create(std::initializer_list<const char*> args)
     -> std::expected<Process, std::system_error> {
     auto vec = std::vector(args);
@@ -163,9 +158,7 @@ CurrentProcess::CurrentProcess() : Process(getpid()) {}
 auto CurrentProcess::Get() noexcept -> CurrentProcess& {
     static auto instance = CurrentProcess();
     static auto init = []() {
-        auto handler = [](int) {
-            CurrentProcess::Get().terminate_sig_received = 1;
-        };
+        auto handler = [](int) { CurrentProcess::terminate_sig_received_ = 1; };
         CurrentProcess::AddHandler(SIGINT, handler);
         CurrentProcess::AddHandler(SIGTERM, handler);
         return true;
@@ -190,3 +183,9 @@ auto CurrentProcess::SignalReady() -> std::expected<void, std::runtime_error> {
     }
     return {};
 }
+
+auto CurrentProcess::TerminateReceived() -> bool {
+    return terminate_sig_received_ == 1;
+}
+
+volatile sig_atomic_t CurrentProcess::terminate_sig_received_ = 0;

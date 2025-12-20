@@ -1,6 +1,9 @@
 #pragma once
 
+#include <unistd.h>
+
 #include <array>
+#include <chrono>
 #include <expected>
 
 #include "ipc/msg_queue.h"
@@ -26,8 +29,10 @@ class Logger {
 
     struct Payload {
         LogLevel level;
-        PayloadSenderT sender;
+        pid_t sender_pid;
+        PayloadSenderT sender_name;
         PayloadMsgT msg;
+        std::chrono::system_clock::time_point time;
     };
 
     explicit Logger(std::string_view name, IpcMessageQueue queue);

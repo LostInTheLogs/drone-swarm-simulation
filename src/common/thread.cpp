@@ -44,3 +44,10 @@ auto Thread::Cancel() const -> std::expected<void, std::system_error> {
 
     return {};
 }
+
+void ThreadMutex::Lock() {
+    pthread_mutex_lock(&mutex_);
+}
+void ThreadMutex::Unlock() {
+    pthread_mutex_unlock(&mutex_);
+}

@@ -11,8 +11,6 @@ class Process {
   public:
     explicit Process(pid_t process_id);
 
-    static auto GetCurrent() -> Process;
-
     [[nodiscard]]
     static auto Create(std::initializer_list<const char*> args)
         -> std::expected<Process, std::system_error>;
@@ -63,10 +61,10 @@ class CurrentProcess : public Process {
 
     static void AddHandler(int signal, void (*handler)(int));
     static auto SignalReady() -> std::expected<void, std::runtime_error>;
-
-    volatile sig_atomic_t terminate_sig_received = 0;
+    static auto TerminateReceived() -> bool;
 
   private:
+    static volatile sig_atomic_t terminate_sig_received_;
     CurrentProcess();
 };
 

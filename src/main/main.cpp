@@ -7,33 +7,27 @@
 #include "process.h"
 
 namespace {
-auto HandleExpectedError(const auto& expected) {
-    if (!expected) {
-        LogPrinter::PrintError("logger", expected.error().what());
+auto Err(const auto& val) -> auto& {
+    if (!val) {
+        throw std::move(val.error());
     }
-    return static_cast<bool>(expected);
+    return val.value();
 }
 }  // namespace
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int {
-    auto logger_process = Process::CreateReady({"./logger"});
-    if (!HandleExpectedError(logger_process)) {
-        return 1;
-    }
+    try {
+        auto logger_process = Err(Process::CreateReady({"./logger"}));
 
-    auto logger = Logger::Create("main");
-    if (!HandleExpectedError(logger)) {
-        return 1;
-    }
+        // const auto& logger = Err(Logger::Create("main"));
 
-    logger->Debug("test");
-    logger->Info("test");
-    logger->Warning("test");
-    logger->Error("test");
-    sleep(1);
+        auto drone_process = Err(Process::Create({"./drone"}));
 
-    auto joined = logger_process->TermWait();
-    if (!HandleExpectedError(joined)) {
+        Err(drone_process.Wait());
+        sleep(1);
+        Err(logger_process.TermWait());
+    } catch (std::exception& e) {
+        LogPrinter::PrintError("main", e.what());
         return 1;
     }
     return 0;
