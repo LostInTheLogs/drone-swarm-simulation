@@ -41,7 +41,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
             next += dur;
             auto slept = Thread::SleepUntil(next);
             if (!slept) {
-                GetLogger().Info("sleep interruped");
+                GetLogger().Info("Sleep interruped");
                 CurrentProcess::Get().Signal(SIGTERM).value();
                 return;
             }

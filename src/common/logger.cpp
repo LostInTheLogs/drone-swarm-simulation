@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <chrono>
 #include <format>
 #include <iostream>
 #include <utility>
@@ -78,7 +79,10 @@ auto LogPrinter::FormatLog(Logger::Payload log) -> std::string {
     string_view sender(log.sender_name);
     auto level = LogLevelToStr(log.level);
 
-    return format("[{:%F %T}] {:>5} {}({}): {}\n", log.time, level, sender,
+    auto local_time =
+        std::chrono::zoned_time(std::chrono::current_zone(), log.time);
+
+    return format("[{:%F %T}] {:>5} {}({}): {}\n", local_time, level, sender,
                   log.sender_pid, msg);
 }
 
