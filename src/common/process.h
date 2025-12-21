@@ -10,7 +10,12 @@
 
 class Process {
   public:
+    Process(const Process&) = delete;
+    Process(Process&&) noexcept;
+    auto operator=(const Process&) -> Process& = delete;
+    auto operator=(Process&&) -> Process& = delete;
     explicit Process(pid_t process_id);
+    ~Process();
 
     [[nodiscard]]
     static auto Create(std::initializer_list<const char*> args)
@@ -45,9 +50,13 @@ class Process {
         -> std::expected<void, std::system_error>;
 
   private:
+    explicit Process(pid_t process_id, bool joinable);
+
     static void Exec(std::span<const char*> args, int fd_to_keep = 0);
 
     pid_t process_id_{};
+
+    bool owner_ = false;
 };
 
 class CurrentProcess : public Process {

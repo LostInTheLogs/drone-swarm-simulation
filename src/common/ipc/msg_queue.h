@@ -11,7 +11,8 @@
 class IpcMessageQueue {
   public:
     IpcMessageQueue(IpcMessageQueue&&) noexcept;
-    auto operator=(IpcMessageQueue&&) noexcept -> IpcMessageQueue&;
+    // auto operator=(IpcMessageQueue&&) noexcept -> IpcMessageQueue&;
+    auto operator=(IpcMessageQueue&&) = delete;
     IpcMessageQueue(const IpcMessageQueue&) = delete;
     auto operator=(const IpcMessageQueue&) -> IpcMessageQueue& = delete;
     ~IpcMessageQueue();

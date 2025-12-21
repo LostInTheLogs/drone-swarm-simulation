@@ -17,6 +17,17 @@ CurrentProcess& g_curr_process = CurrentProcess::Get();
 
 Process::Process(pid_t process_id) : process_id_(process_id) {}
 
+Process::Process(pid_t process_id, bool joinable)
+    : process_id_(process_id), owner_(joinable) {}
+
+Process::Process(Process&& other) noexcept
+    : process_id_(other.process_id_), owner_(other.owner_) {
+    other.owner_ = false;
+}
+Process::~Process() {
+    auto signalled = Signal(SIGTERM);
+}
+
 auto Process::Create(std::initializer_list<const char*> args)
     -> std::expected<Process, std::system_error> {
     auto vec = std::vector(args);
@@ -33,7 +44,7 @@ auto Process::Create(std::span<const char*> args)
             std::system_error(errno, std::generic_category()));
     }
 
-    return Process(process_id);
+    return Process(process_id, true);
 }
 
 auto Process::CreateWithPipe(std::initializer_list<const char*> args,
@@ -64,7 +75,7 @@ auto Process::CreateWithPipe(std::span<const char*> args, int pipe_fd)
     }
 
     close(pipe_ends[1]);
-    return std::make_pair(PipeReader(pipe_ends[0]), Process(process_id));
+    return std::make_pair(PipeReader(pipe_ends[0]), Process(process_id, true));
 }
 
 auto Process::CreateReady(std::initializer_list<const char*> args)
@@ -78,12 +89,12 @@ auto Process::CreateReady(std::span<const char*> args)
     if (!pipe_and_process) {
         return std::unexpected(pipe_and_process.error());
     }
-    auto& [pipe, logger_process] = pipe_and_process.value();
+    auto& [pipe, process] = pipe_and_process.value();
 
     if (auto success = Process::WaitReady(pipe); !success) {
         return std::unexpected(success.error());
     }
-    return logger_process;
+    return std::move(process);
 }
 
 void Process::Exec(std::span<const char*> args, int fd_to_keep) {

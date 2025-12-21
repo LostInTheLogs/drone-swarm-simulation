@@ -16,20 +16,20 @@ IpcMessageQueue::IpcMessageQueue(IpcMessageQueue&& other) noexcept
     other.owner_ = false;
 }
 
-auto IpcMessageQueue::operator=(IpcMessageQueue&& other) noexcept
-    -> IpcMessageQueue& {
-    if (this == &other) {
-        return *this;
-    }
-    if (owner_) {
-        auto removed = Remove();
-    }
-    id_ = other.id_;
-    owner_ = other.owner_;
-    other.owner_ = false;
-
-    return *this;
-}
+// auto IpcMessageQueue::operator=(IpcMessageQueue&& other) noexcept
+//     -> IpcMessageQueue& {
+//     if (this == &other) {
+//         return *this;
+//     }
+//     if (owner_) {
+//         auto removed = Remove();
+//     }
+//     id_ = other.id_;
+//     owner_ = other.owner_;
+//     other.owner_ = false;
+//
+//     return *this;
+// }
 
 IpcMessageQueue::~IpcMessageQueue() {
     if (owner_) {

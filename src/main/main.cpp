@@ -1,18 +1,17 @@
 #include <unistd.h>
 
 #include <csignal>
-#include <experimental/scope>
 
 #include "logger.h"
 #include "process.h"
 #include "thread.h"
 
 namespace {
-auto Err(const auto& val) -> auto& {
+auto Err(auto&& val) -> decltype(auto) {
     if (!val) {
-        throw std::move(val.error());
+        throw std::forward<decltype(val)>(val).error();
     }
-    return val.value();
+    return std::forward<decltype(val)>(val).value();
 }
 }  // namespace
 
