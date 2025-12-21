@@ -39,7 +39,7 @@ po pewnym określonym czasie $X_i$, liczonym w ilościach ładowań (pobytów w
 bazie).
 Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 
-# Krótki opis
+# Todo
 
 ## Parametry
 
@@ -70,11 +70,11 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 ### Drony
 
 - [ ] po ładowaniu bateri $T_1$ opuszcza bazę
-- [ ] maksymalny czas lotu $T_2$
+- [x] maksymalny czas lotu $T_2$
 - [ ] powrót do bazy przy baterii < 20%
-- [ ] zniszczenie przy baterii = 0%
-- [ ] po $X_i$ ładowaniach utilizacja
-- [ ] **sig3**: samobójstwo (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%
+- [x] zniszczenie przy baterii = 0%
+- [x] po $X_i$ ładowaniach utilizacja
+- [x] **sig3**: samobójstwo (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%
 
 # Testy
 
