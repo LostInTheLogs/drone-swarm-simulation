@@ -13,10 +13,10 @@ enum class MessageTypeId : long { LOGGER = 1 };
 enum class SemaphoreSetKey : key_t { MAIN = 33889 };
 
 // NOLINTNEXTLINE(performance-enum-size)
-enum class SharedMemoryKey : key_t { MAIN = 33890 };
+enum class SharedMemoryKey : key_t { MAIN = 33889 };
 
 // NOLINTNEXTLINE(performance-enum-size)
-enum class SemaphoreId : int { GRACEFUL_EXIT, SEMAPHORE_NUM };
+// enum class TestSem : int { GRACEFUL_EXIT, COUNT };
 
 enum class IpcType : uint8_t { MESSAGE_QUEUE, SEMAPHORE_SET, SHARED_MEMORY };
 
