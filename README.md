@@ -50,24 +50,22 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 - $T_k$ = interwał uzupełniania braków dronów
 - $X_i$ = cylk życia drona w ilościach ładowań
 
-## Programy
-
-### Dowodca
+## Dowodca
 
 - [ ] wysyła sygnały 1, 2 do operatora i 3 do drona.
 
-### Operator
+## Operator
 
 - [ ] co $T_k$ uzupełnia braki dronów (jeśli jest miejsce w bazie)
 - [ ] **sig1**: zwiększa maksymalną ilość dronów w bazie 2x (?)
 - [ ] **sig2**: zmniejsza maksymalną ilość dronów w bazie 2x (?)
 
-#### Baza
+### Baza
 
 - [ ] dwa jednokierunkowe w danej chwili wejścia/wyjścia
 - [ ] maksymalnie P dronów w bazie
 
-### Drony
+## Drony
 
 - [ ] po ładowaniu bateri $T_1$ opuszcza bazę
 - [x] maksymalny czas lotu $T_2$
@@ -75,6 +73,11 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 - [x] zniszczenie przy baterii = 0%
 - [x] po $X_i$ ładowaniach utilizacja
 - [x] **sig3**: samobójstwo (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%
+
+### Leaving base:
+
+- wait Out
+- try
 
 # Testy
 
