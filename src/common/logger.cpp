@@ -25,12 +25,9 @@ Logger::Logger(string_view name, IpcMessageQueue queue)
     CopyStrToArray(name, name_);
 }
 
-auto Logger::Create(string_view name) -> expected<Logger, IpcError> {
+auto Logger::Create(string_view name) -> Logger {
     static auto queue = IpcMessageQueue::Get(MsgQueueKey::MAIN);
-    if (!queue) {
-        return std::unexpected(queue.error());
-    }
-    return Logger(name, queue->Copy());
+    return Logger(name, queue.Copy());
 }
 
 void Logger::Log(LogLevel level, string_view msg) {
@@ -65,13 +62,9 @@ void Logger::Error(string_view msg) {
 
 LogPrinter::LogPrinter(IpcMessageQueue queue) : queue_(std::move(queue)) {}
 
-auto LogPrinter::Create() -> expected<LogPrinter, IpcError> {
+auto LogPrinter::Create() -> LogPrinter {
     static auto queue = IpcMessageQueue::Create(MsgQueueKey::MAIN, 0666);
-    if (!queue) {
-        return unexpected(queue.error());
-    }
-
-    return LogPrinter(std::move(*queue));
+    return LogPrinter(std::move(queue));
 }
 
 auto LogPrinter::FormatLog(Logger::Payload log) -> std::string {

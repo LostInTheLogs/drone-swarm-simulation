@@ -3,10 +3,8 @@
 #include <csignal>
 #include <expected>
 #include <span>
-#include <system_error>
 
 #include "ipc/pipe.h"
-// #include "thread_utils.h"
 
 class Process {
   public:
@@ -18,36 +16,29 @@ class Process {
     ~Process();
 
     [[nodiscard]]
-    static auto Create(std::initializer_list<const char*> args)
-        -> std::expected<Process, std::system_error>;
+    static auto Create(std::initializer_list<const char*> args) -> Process;
     [[nodiscard]]
-    static auto Create(std::span<const char*> args)
-        -> std::expected<Process, std::system_error>;
+    static auto Create(std::span<const char*> args) -> Process;
 
     [[nodiscard]]
     static auto CreateWithPipe(std::initializer_list<const char*> args,
                                int pipe_fd = STDOUT_FILENO)
-        -> std::expected<std::pair<PipeReader, Process>, std::system_error>;
+        -> std::pair<PipeReader, Process>;
     [[nodiscard]]
     static auto CreateWithPipe(std::span<const char*> args,
                                int pipe_fd = STDOUT_FILENO)
-        -> std::expected<std::pair<PipeReader, Process>, std::system_error>;
+        -> std::pair<PipeReader, Process>;
 
     [[nodiscard]]
-    static auto CreateReady(std::initializer_list<const char*> args)
-        -> std::expected<Process, std::system_error>;
+    static auto CreateReady(std::initializer_list<const char*> args) -> Process;
     [[nodiscard]]
-    static auto CreateReady(std::span<const char*> args)
-        -> std::expected<Process, std::system_error>;
+    static auto CreateReady(std::span<const char*> args) -> Process;
 
-    [[nodiscard]] auto TermWait() const
-        -> std::expected<int, std::system_error>;
-    [[nodiscard]] auto Signal(int signal) const
-        -> std::expected<void, std::system_error>;
-    [[nodiscard]] auto Wait() const -> std::expected<int, std::system_error>;
+    auto TermWait() const -> int;  // NOLINT(*nodiscard*)
+    auto Signal(int signal) const -> void;
+    auto Wait() const -> int;  // NOLINT(*nodiscard*)
 
-    static auto WaitReady(PipeReader& pipe)
-        -> std::expected<void, std::system_error>;
+    static auto WaitReady(PipeReader& pipe) -> void;
 
     [[nodiscard]] auto GetPid() const -> pid_t;
 
@@ -72,8 +63,7 @@ class CurrentProcess : public Process {
     static auto Get() noexcept -> CurrentProcess&;
 
     static void AddHandler(int signal, void (*handler)(int));
-    static auto SignalReady() -> std::expected<void, std::runtime_error>;
-    // static void RequestTermination();
+    static void SignalReady();
     static auto TerminateReceived() -> bool;
 
   private:

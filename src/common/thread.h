@@ -15,10 +15,9 @@ class Thread {
     using Callable = std::function<void()>;
 
   public:
-    [[nodiscard]] static auto Create(const Callable &function)
-        -> std::expected<Thread, std::system_error>;
-    [[nodiscard]] auto Join() const -> std::expected<void, std::system_error>;
-    [[nodiscard]] auto Cancel() const -> std::expected<void, std::system_error>;
+    [[nodiscard]] static auto Create(const Callable &function) -> Thread;
+    void Join() const;
+    void Cancel() const;
 
     template <class Rep, class Period>
     static auto SleepFor(const std::chrono::duration<Rep, Period> &dur)

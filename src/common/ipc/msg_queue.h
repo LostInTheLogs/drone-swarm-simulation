@@ -11,7 +11,6 @@
 class IpcMessageQueue {
   public:
     IpcMessageQueue(IpcMessageQueue&&) noexcept;
-    // auto operator=(IpcMessageQueue&&) noexcept -> IpcMessageQueue&;
     auto operator=(IpcMessageQueue&&) = delete;
     IpcMessageQueue(const IpcMessageQueue&) = delete;
     auto operator=(const IpcMessageQueue&) -> IpcMessageQueue& = delete;
@@ -19,16 +18,14 @@ class IpcMessageQueue {
 
     [[nodiscard]]
     static auto Create(MsgQueueKey queue_key, unsigned int permissions)
-        -> std::expected<IpcMessageQueue, IpcError>;
+        -> IpcMessageQueue;
 
     [[nodiscard]]
     static auto GetOrCreate(MsgQueueKey queue_key, unsigned int permissions,
-                            bool owner = false)
-        -> std::expected<IpcMessageQueue, IpcError>;
+                            bool owner = false) -> IpcMessageQueue;
 
     [[nodiscard]]
-    static auto Get(MsgQueueKey queue_key)
-        -> std::expected<IpcMessageQueue, IpcError>;
+    static auto Get(MsgQueueKey queue_key) -> IpcMessageQueue;
 
     [[nodiscard]] auto Copy() const -> IpcMessageQueue;
 
@@ -105,7 +102,7 @@ class IpcMessageQueue {
 
     [[nodiscard]]
     static auto GetQueueId(MsgQueueKey queue_key, unsigned int flags = 0)
-        -> std::expected<int, IpcError>;
+        -> int;
 
     int id_;
     bool owner_;

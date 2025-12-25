@@ -12,8 +12,7 @@ class Logger {
   public:
     enum LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
 
-    static auto Create(std::string_view name)
-        -> std::expected<Logger, IpcError>;
+    static auto Create(std::string_view name) -> Logger;
 
     void Log(LogLevel level, std::string_view msg);
     void Debug(std::string_view msg);
@@ -45,7 +44,7 @@ class Logger {
 
 class LogPrinter {
   public:
-    static auto Create() -> std::expected<LogPrinter, IpcError>;
+    static auto Create() -> LogPrinter;
     auto ReceiveForever() -> std::expected<void, IpcError>;
 
     static void PrintError(std::string_view sender, std::string_view msg);

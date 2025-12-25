@@ -19,17 +19,17 @@ auto HandleExpectedError(const auto& expected) {
 }  // namespace
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int {
-    auto log_receiver = LogPrinter::Create();
-    if (!HandleExpectedError(log_receiver)) {
-        return 1;
-    }
+    try {
+        auto log_receiver = LogPrinter::Create();
+        CurrentProcess::SignalReady();
 
-    if (!CurrentProcess::SignalReady()) {
-        return 1;
-    }
+        auto success = log_receiver.ReceiveForever();
+        if (!HandleExpectedError(success)) {
+            return 1;
+        }
 
-    auto success = log_receiver->ReceiveForever();
-    if (!HandleExpectedError(success)) {
+    } catch (std::exception& e) {
+        LogPrinter::PrintError("logger", e.what());
         return 1;
     }
 

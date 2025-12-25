@@ -25,40 +25,40 @@ Process::Process(Process&& other) noexcept
     other.owner_ = false;
 }
 Process::~Process() {
-    auto signalled = Signal(SIGTERM);
+    if (owner_) {
+        try {
+            Signal(SIGTERM);
+        } catch (const std::system_error&) {  // NOLINT
+        }
+    }
 }
 
-auto Process::Create(std::initializer_list<const char*> args)
-    -> std::expected<Process, std::system_error> {
+auto Process::Create(std::initializer_list<const char*> args) -> Process {
     auto vec = std::vector(args);
     return Create(vec);
 }
-auto Process::Create(std::span<const char*> args)
-    -> std::expected<Process, std::system_error> {
+auto Process::Create(std::span<const char*> args) -> Process {
     auto process_id = fork();
 
     if (process_id == 0) {
         Exec(args);
     } else if (process_id == -1) {
-        return std::unexpected(
-            std::system_error(errno, std::generic_category()));
+        throw std::system_error(errno, std::generic_category());
     }
 
     return Process(process_id, true);
 }
 
 auto Process::CreateWithPipe(std::initializer_list<const char*> args,
-                             int pipe_fd)
-    -> std::expected<std::pair<PipeReader, Process>, std::system_error> {
+                             int pipe_fd) -> std::pair<PipeReader, Process> {
     auto vec = std::vector(args);
     return CreateWithPipe(vec, pipe_fd);
 }
 auto Process::CreateWithPipe(std::span<const char*> args, int pipe_fd)
-    -> std::expected<std::pair<PipeReader, Process>, std::system_error> {
+    -> std::pair<PipeReader, Process> {
     std::array<int, 2> pipe_ends{};
     if (pipe(pipe_ends.data()) == -1) {
-        return std::unexpected(
-            std::system_error(errno, std::generic_category()));
+        throw std::system_error(errno, std::generic_category());
     }
 
     auto process_id = fork();
@@ -70,30 +70,22 @@ auto Process::CreateWithPipe(std::span<const char*> args, int pipe_fd)
     } else if (process_id == -1) {
         close(pipe_ends[0]);
         close(pipe_ends[1]);
-        return std::unexpected(
-            std::system_error(errno, std::generic_category()));
+        throw std::system_error(errno, std::generic_category());
     }
 
     close(pipe_ends[1]);
     return std::make_pair(PipeReader(pipe_ends[0]), Process(process_id, true));
 }
 
-auto Process::CreateReady(std::initializer_list<const char*> args)
-    -> std::expected<Process, std::system_error> {
+auto Process::CreateReady(std::initializer_list<const char*> args) -> Process {
     auto vec = std::vector(args);
     return CreateReady(vec);
 }
-auto Process::CreateReady(std::span<const char*> args)
-    -> std::expected<Process, std::system_error> {
+auto Process::CreateReady(std::span<const char*> args) -> Process {
     auto pipe_and_process = Process::CreateWithPipe(args, 3);
-    if (!pipe_and_process) {
-        return std::unexpected(pipe_and_process.error());
-    }
-    auto& [pipe, process] = pipe_and_process.value();
+    auto& [pipe, process] = pipe_and_process;
 
-    if (auto success = Process::WaitReady(pipe); !success) {
-        return std::unexpected(success.error());
-    }
+    Process::WaitReady(pipe);
     return std::move(process);
 }
 
@@ -129,25 +121,18 @@ void Process::Exec(std::span<const char*> args, int fd_to_keep) {
     }
 }
 
-auto Process::TermWait() const -> std::expected<int, std::system_error> {
-    if (auto success = Signal(SIGTERM); !success) {
-        return std::unexpected(success.error());
-    }
-
+auto Process::TermWait() const -> int {
+    Signal(SIGTERM);
     return Wait();
 }
 
-auto Process::Signal(int signal) const
-    -> std::expected<void, std::system_error> {
+auto Process::Signal(int signal) const -> void {
     if (kill(process_id_, signal) == -1) {
-        return std::unexpected(
-            std::system_error(errno, std::generic_category()));
+        throw std::system_error(errno, std::generic_category());
     }
-
-    return {};
 }
 
-auto Process::Wait() const -> std::expected<int, std::system_error> {
+auto Process::Wait() const -> int {
     int status{};
 
     waitpid(process_id_, &status, 0);
@@ -155,13 +140,11 @@ auto Process::Wait() const -> std::expected<int, std::system_error> {
     return status;
 }
 
-auto Process::WaitReady(PipeReader& pipe)
-    -> std::expected<void, std::system_error> {
+auto Process::WaitReady(PipeReader& pipe) -> void {
     auto read = pipe.Read<char>();
     if (!read) {
-        return std::unexpected(read.error());
+        throw std::system_error(read.error());
     }
-    return {};
 }
 
 auto Process::GetPid() const -> pid_t {
@@ -190,13 +173,12 @@ void CurrentProcess::AddHandler(int signal, void (*handler)(int)) {
     sigaction(signal, &action, nullptr);
 }
 
-auto CurrentProcess::SignalReady() -> std::expected<void, std::runtime_error> {
+auto CurrentProcess::SignalReady() -> void {
     PipeWriter writer(3, false);
     auto written = writer.Write('\0');
     if (!written) {
-        return std::unexpected(written.error());
+        throw std::system_error(written.error());
     }
-    return {};
 }
 
 // void CurrentProcess::RequestTermination() {

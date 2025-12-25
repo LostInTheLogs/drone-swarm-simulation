@@ -2,8 +2,7 @@
 
 #include <pthread.h>
 
-auto Thread::Create(const std::function<void()>& function)
-    -> std::expected<Thread, std::system_error> {
+auto Thread::Create(const std::function<void()>& function) -> Thread {
     Thread thread;
 
     auto* heap_fn = new std::function(function);
@@ -19,28 +18,22 @@ auto Thread::Create(const std::function<void()>& function)
         heap_fn);
 
     if (error != 0) {
-        return std::unexpected(std::system_error());
+        throw std::system_error();
     }
 
     return thread;
 }
 
-auto Thread::Join() const -> std::expected<void, std::system_error> {
+void Thread::Join() const {
     auto error = pthread_join(thread_id_, nullptr);
     if (error != 0) {
-        return std::unexpected(
-            std::system_error(error, std::generic_category()));
+        throw std::system_error(error, std::generic_category());
     }
-
-    return {};
 }
 
-auto Thread::Cancel() const -> std::expected<void, std::system_error> {
+void Thread::Cancel() const {
     auto error = pthread_cancel(thread_id_);
     if (error != 0) {
-        return std::unexpected(
-            std::system_error(error, std::generic_category()));
+        throw std::system_error(error, std::generic_category());
     }
-
-    return {};
 }

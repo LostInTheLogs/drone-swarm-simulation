@@ -50,49 +50,35 @@ class SemaphoreSet {
 
     static auto Create(SemSetKey key,
                        std::initializer_list<unsigned short> init,
-                       unsigned int permissions)
-        -> std::expected<SemaphoreSet, IpcError> {
+                       unsigned int permissions) -> SemaphoreSet {
         std::span<const unsigned short> init_span(init.begin(), init.end());
         return Create(key, init_span, permissions);
     }
 
     [[nodiscard]]
     static auto Create(SemSetKey sem_key, std::span<const unsigned short> init,
-                       unsigned int permissions)
-        -> std::expected<SemaphoreSet, IpcError> {
+                       unsigned int permissions) -> SemaphoreSet {
         auto key = static_cast<key_t>(sem_key);
 
         if (init.size() != static_cast<size_t>(E::COUNT)) {
-            return std::unexpected(
-                IpcError(IpcType::SEMAPHORE_SET, key, -1, EINVAL));
+            throw IpcError(IpcType::SEMAPHORE_SET, key, -1, EINVAL);
         }
 
         auto sem_id = GetSemId(sem_key, permissions | IPC_CREAT | IPC_EXCL);
-        if (!sem_id) {
-            return std::unexpected(
-                IpcError(IpcType::SEMAPHORE_SET, key, -1, errno));
-        }
 
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
         semun arg{.get_set_array = const_cast<unsigned short*>(init.data())};
-        if (semctl(*sem_id, 0, SETALL, arg) == -1) {
-            return std::unexpected(
-                IpcError(IpcType::SEMAPHORE_SET, key, *sem_id, errno));
+        if (semctl(sem_id, 0, SETALL, arg) == -1) {
+            throw IpcError(IpcType::SEMAPHORE_SET, key, sem_id, errno);
         }
 
-        return SemaphoreSet(*sem_id, true);
+        return SemaphoreSet(sem_id, true);
     }
 
     [[nodiscard]]
-    static auto Get(SemSetKey sem_key)
-        -> std::expected<SemaphoreSet, IpcError> {
-        auto key = static_cast<key_t>(sem_key);
+    static auto Get(SemSetKey sem_key) -> SemaphoreSet {
         auto sem_id = GetSemId(sem_key, 0);
-        if (!sem_id) {
-            return std::unexpected(
-                IpcError(IpcType::SEMAPHORE_SET, key, -1, errno));
-        }
-        return SemaphoreSet(*sem_id);
+        return SemaphoreSet(sem_id);
     }
 
     void Disown() {
@@ -122,14 +108,12 @@ class SemaphoreSet {
         : id_(sem_id), owner_(owner) {};
 
     [[nodiscard]]
-    static auto GetSemId(SemSetKey sem_key, unsigned int flags = 0)
-        -> std::expected<int, IpcError> {
+    static auto GetSemId(SemSetKey sem_key, unsigned int flags = 0) -> int {
         auto key = static_cast<key_t>(sem_key);
         auto sem_id =
             semget(key, static_cast<int>(E::COUNT), static_cast<int>(flags));
         if (sem_id < 0) {
-            return std::unexpected(
-                IpcError(IpcType::SEMAPHORE_SET, key, -1, errno));
+            throw IpcError(IpcType::SEMAPHORE_SET, key, -1, errno);
         }
         return sem_id;
     }
