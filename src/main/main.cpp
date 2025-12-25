@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "globals.h"
+#include "ipc/ipc.h"
 #include "ipc/semaphore_set.h"
 #include "ipc/shared_memory.h"
 #include "logger.h"
@@ -24,21 +25,20 @@ auto Err(auto&& val) -> decltype(auto) {
 auto main(int /*argc*/, char* /*argv*/[]) -> int {
     using namespace std::chrono_literals;
     try {
-        // auto params = ShmParameters::Create(ShmKey::PARAMS, 0666);
-        // params->max_drones = 10;
-        //
-        // const auto queue_size =
-        // SmhQueue<pid_t>::CalcSize(params->max_drones); auto in_queue =
-        //     ShmProcQueue::Create(ShmKey::IN_QUEUE, 0666, queue_size);
-        // in_queue.Detach();
-        // auto out_queue =
-        //     ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0666, queue_size);
-        // out_queue.Detach();
-        //
-        // params.Detach();
+        auto params = ShmParameters::Create(ShmKey::PARAMS, 0666);
+        params->max_drones = 10;
 
-        // auto sems = Err(
-        //     SemaphoreSet<TestSem>::Create(SemaphoreSetKey::MAIN, {1}, 0666));
+        const auto queue_size = SmhQueue<pid_t>::CalcSize(params->max_drones);
+        auto in_queue =
+            ShmProcQueue::Create(ShmKey::IN_QUEUE, 0666, queue_size);
+        in_queue.Detach();
+        auto out_queue =
+            ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0666, queue_size);
+        out_queue.Detach();
+
+        params.Detach();
+
+        auto sems = SemaphoreSet<SemIds>::Create(SemSetKey::MAIN, 0666);
 
         auto logger_process = Process::CreateReady({"./logger"});
 

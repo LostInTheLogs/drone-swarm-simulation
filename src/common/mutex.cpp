@@ -1,9 +1,9 @@
 #include "mutex.h"
 
-RWMutex::RWMutex(Semaphore reader_count_mut, Semaphore reader_count,
+RWMutex::RWMutex(Semaphore reader_count, Semaphore reader_count_mut,
                  Semaphore writer_mut)
-    : reader_count_mut_(reader_count_mut),
-      reader_count_(reader_count),
+    : reader_count_(reader_count),
+      reader_count_mut_(reader_count_mut),
       writer_mut_(writer_mut) {}
 
 void RWMutex::LockRead() {

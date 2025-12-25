@@ -48,6 +48,12 @@ class SemaphoreSet {
         }
     }
 
+    static auto Create(SemSetKey key, unsigned int permissions) -> SemaphoreSet
+        requires requires { SemInit<E>::Get(); }
+    {
+        return Create(key, SemInit<E>::Get(), permissions);
+    }
+
     static auto Create(SemSetKey key,
                        std::initializer_list<unsigned short> init,
                        unsigned int permissions) -> SemaphoreSet {

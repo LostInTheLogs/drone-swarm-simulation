@@ -4,7 +4,7 @@
 class RWMutex {
   public:
     // mut initalized with 1, count with 0
-    RWMutex(Semaphore reader_count_mut, Semaphore reader_count,
+    RWMutex(Semaphore reader_count, Semaphore reader_count_mut,
             Semaphore writer_mut);
     RWMutex(RWMutex &&) = default;
     RWMutex(const RWMutex &) = default;
@@ -18,7 +18,7 @@ class RWMutex {
     void UnlockWrite();
 
   private:
-    Semaphore reader_count_mut_;
     Semaphore reader_count_;
+    Semaphore reader_count_mut_;
     Semaphore writer_mut_;
 };
