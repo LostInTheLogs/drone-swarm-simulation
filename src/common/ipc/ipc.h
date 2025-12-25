@@ -3,17 +3,19 @@
 #include <cstdint>
 #include <system_error>
 
+constexpr key_t g_rand_key = 33889;
+
 // NOLINTNEXTLINE(performance-enum-size)
-enum class MsgQueueKey : key_t { MAIN = 33889 };
+enum class MsgQueueKey : key_t { MAIN = g_rand_key };
 
 // NOLINTNEXTLINE(performance-enum-size)
 enum class MessageTypeId : long { LOGGER = 1 };
 
 // NOLINTNEXTLINE(performance-enum-size)
-enum class SemaphoreSetKey : key_t { MAIN = 33889 };
+enum class SemSetKey : key_t { MAIN = g_rand_key };
 
 // NOLINTNEXTLINE(performance-enum-size)
-enum class SharedMemoryKey : key_t { MAIN = 33889 };
+enum class ShmKey : key_t { PARAMS = g_rand_key, IN_QUEUE, OUT_QUEUE };
 
 // NOLINTNEXTLINE(performance-enum-size)
 // enum class TestSem : int { GRACEFUL_EXIT, COUNT };

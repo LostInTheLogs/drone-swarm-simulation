@@ -48,7 +48,7 @@ class SemaphoreSet {
         }
     }
 
-    static auto Create(SemaphoreSetKey key,
+    static auto Create(SemSetKey key,
                        std::initializer_list<unsigned short> init,
                        unsigned int permissions)
         -> std::expected<SemaphoreSet, IpcError> {
@@ -57,8 +57,7 @@ class SemaphoreSet {
     }
 
     [[nodiscard]]
-    static auto Create(SemaphoreSetKey sem_key,
-                       std::span<const unsigned short> init,
+    static auto Create(SemSetKey sem_key, std::span<const unsigned short> init,
                        unsigned int permissions)
         -> std::expected<SemaphoreSet, IpcError> {
         auto key = static_cast<key_t>(sem_key);
@@ -85,7 +84,7 @@ class SemaphoreSet {
     }
 
     [[nodiscard]]
-    static auto Get(SemaphoreSetKey sem_key)
+    static auto Get(SemSetKey sem_key)
         -> std::expected<SemaphoreSet, IpcError> {
         auto key = static_cast<key_t>(sem_key);
         auto sem_id = GetSemId(sem_key, 0);
@@ -123,7 +122,7 @@ class SemaphoreSet {
         : id_(sem_id), owner_(owner) {};
 
     [[nodiscard]]
-    static auto GetSemId(SemaphoreSetKey sem_key, unsigned int flags = 0)
+    static auto GetSemId(SemSetKey sem_key, unsigned int flags = 0)
         -> std::expected<int, IpcError> {
         auto key = static_cast<key_t>(sem_key);
         auto sem_id =
@@ -156,8 +155,8 @@ class Semaphore {
     }
 
     [[nodiscard]]
-    auto Wait() -> std::expected<void, IpcError> {
-        return SemOp({
+    auto Wait() {
+        SemOp({
             .sem_num = sem_num_,
             .sem_op = -1,
             .sem_flg = 0,
@@ -165,40 +164,43 @@ class Semaphore {
     }
 
     [[nodiscard]]
-    auto WaitForZero() -> std::expected<void, IpcError> {
-        return SemOp({
+    auto WaitForZero() {
+        SemOp({
             .sem_num = sem_num_,
             .sem_op = 0,
             .sem_flg = 0,
         });
     }
 
-    [[nodiscard]]
-    auto Signal() -> std::expected<void, IpcError> {
-        return SemOp({
+    void Signal() const {
+        SemOp({
             .sem_num = sem_num_,
             .sem_op = 1,
             .sem_flg = 0,
         });
+    }
+    [[nodiscard]] auto GetVal() const -> int {
+        auto ret = semctl(semset_id_, sem_num_, GETVAL);
+        if (ret == -1) {
+            throw IpcError(IpcType::SEMAPHORE_SET, -1, semset_id_, errno);
+        }
+
+        return ret;
     }
 
   private:
     Semaphore(int semset_id, unsigned short sem_num)
         : semset_id_(semset_id), sem_num_(sem_num) {}
 
-    [[nodiscard]]
-    auto SemOp(sembuf sop) const -> std::expected<void, IpcError> {
+    void SemOp(sembuf sop) const {
         while (true) {
-            auto error = semop(semset_id_, &sop, 1);
-            if (error == 0) {
-                return {};
+            if (semop(semset_id_, &sop, 1) == 0) {
+                return;
             }
-            if (error != EINTR || CurrentProcess::TerminateReceived()) {
-                return std::unexpected(
-                    IpcError(IpcType::SEMAPHORE_SET, -1, semset_id_, errno));
+            if (errno != EINTR || CurrentProcess::TerminateReceived()) {
+                throw IpcError(IpcType::SEMAPHORE_SET, -1, semset_id_, errno);
             }
         }
-        return {};
     }
 
     int semset_id_;

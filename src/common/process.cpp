@@ -164,6 +164,10 @@ auto Process::WaitReady(PipeReader& pipe)
     return {};
 }
 
+auto Process::GetPid() const -> pid_t {
+    return process_id_;
+}
+
 CurrentProcess::CurrentProcess() : Process(getpid()) {}
 
 auto CurrentProcess::Get() noexcept -> CurrentProcess& {

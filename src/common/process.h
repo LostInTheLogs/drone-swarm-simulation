@@ -49,6 +49,8 @@ class Process {
     static auto WaitReady(PipeReader& pipe)
         -> std::expected<void, std::system_error>;
 
+    [[nodiscard]] auto GetPid() const -> pid_t;
+
   private:
     explicit Process(pid_t process_id, bool joinable);
 

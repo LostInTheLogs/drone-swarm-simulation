@@ -42,10 +42,12 @@ class SharedMemory {
     }
 
     [[nodiscard]]
-    static auto Create(SharedMemoryKey queue_key, unsigned int permissions)
+    static auto Create(ShmKey queue_key, unsigned int permissions,
+                       size_t size = sizeof(T))
         -> std::expected<SharedMemory, IpcError> {
         auto key = static_cast<key_t>(queue_key);
-        auto mem_id = GetMemId(queue_key, permissions | IPC_CREAT | IPC_EXCL);
+        auto mem_id =
+            GetMemId(queue_key, permissions | IPC_CREAT | IPC_EXCL, size);
         if (!mem_id) {
             return std::unexpected(
                 IpcError(IpcType::SHARED_MEMORY, key, -1, errno));
@@ -57,17 +59,16 @@ class SharedMemory {
             return std::unexpected(atached.error());
         }
 
-        T init{};
-        memcpy(ret.ptr_, &init, sizeof(T));
+        new (ret.ptr_) T();
 
         return std::move(ret);
     }
 
     [[nodiscard]]
-    static auto Get(SharedMemoryKey queue_key)
+    static auto Get(ShmKey queue_key, size_t size = sizeof(T))
         -> std::expected<SharedMemory, IpcError> {
         auto key = static_cast<key_t>(queue_key);
-        auto mem_id = GetMemId(queue_key, 0);
+        auto mem_id = GetMemId(queue_key, 0, size);
         if (!mem_id) {
             return std::unexpected(
                 IpcError(IpcType::SHARED_MEMORY, key, -1, errno));
@@ -85,40 +86,14 @@ class SharedMemory {
 
     [[nodiscard]]
     auto Remove() -> std::expected<void, IpcError> {
-        if (owner_) {
-            auto success = shmctl(id_, IPC_RMID, nullptr);
-            if (success == -1) {
-                return std::unexpected(
-                    IpcError(IpcType::SHARED_MEMORY, -1, id_, errno));
-            }
+        auto success = shmctl(id_, IPC_RMID, nullptr);
+        if (success == -1) {
+            return std::unexpected(
+                IpcError(IpcType::SHARED_MEMORY, -1, id_, errno));
         }
         owner_ = false;
 
         return {};
-    }
-
-    auto operator->() -> T* {
-        return ptr_;
-    }
-
-    auto operator->() const -> const T* {
-        return ptr_;
-    }
-
-  private:
-    explicit SharedMemory(int queue_id, bool owner = false, T* ptr = nullptr)
-        : id_(queue_id), ptr_(ptr), owner_(owner) {};
-
-    [[nodiscard]]
-    static auto GetMemId(SharedMemoryKey queue_key, unsigned int flags = 0)
-        -> std::expected<int, IpcError> {
-        auto key = static_cast<key_t>(queue_key);
-        auto mem_id = shmget(key, sizeof(T), static_cast<int>(flags));
-        if (mem_id < 0) {
-            return std::unexpected(
-                IpcError(IpcType::SHARED_MEMORY, key, -1, errno));
-        }
-        return mem_id;
     }
 
     [[nodiscard]]
@@ -138,7 +113,32 @@ class SharedMemory {
             return std::unexpected(
                 IpcError(IpcType::SHARED_MEMORY, -1, id_, errno));
         }
+        ptr_ = nullptr;
         return {};
+    }
+
+    auto operator->() -> T* {
+        return ptr_;
+    }
+
+    auto operator->() const -> const T* {
+        return ptr_;
+    }
+
+  private:
+    explicit SharedMemory(int queue_id, bool owner = false, T* ptr = nullptr)
+        : id_(queue_id), ptr_(ptr), owner_(owner) {};
+
+    [[nodiscard]]
+    static auto GetMemId(ShmKey queue_key, unsigned int flags, size_t size)
+        -> std::expected<int, IpcError> {
+        auto key = static_cast<key_t>(queue_key);
+        auto mem_id = shmget(key, size, static_cast<int>(flags));
+        if (mem_id < 0) {
+            return std::unexpected(
+                IpcError(IpcType::SHARED_MEMORY, key, -1, errno));
+        }
+        return mem_id;
     }
 
     int id_;
