@@ -9,7 +9,7 @@
 
 // max heap queue
 template <typename T>
-class SmhQueue {
+class Queue {
   public:
     void Push(const T& data, int priority) {
         Item item{.priority = priority, .seq = seq_, .data = data};
@@ -42,7 +42,7 @@ class SmhQueue {
     auto Remove(T item) {
         size_t found = 0;
         for (found = 0; found < size_; found++) {
-            if (heap_[found] == item) {
+            if (heap_[found].data == item) {
                 break;
             }
         }
@@ -57,7 +57,7 @@ class SmhQueue {
     }
 
     static auto CalcSize(size_t n) -> size_t {
-        return sizeof(SmhQueue<T>) + (sizeof(Item) * (n - 1));
+        return sizeof(Queue<T>) + (sizeof(Item) * (n - 1));
     }
 
   private:

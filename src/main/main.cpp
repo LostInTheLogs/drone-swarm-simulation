@@ -8,7 +8,7 @@
 #include "ipc/shared_memory.h"
 #include "logger.h"
 #include "process.h"
-#include "shm_queue.h"
+#include "queue.h"
 #include "thread.h"
 
 namespace {
@@ -25,16 +25,14 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
     using namespace std::chrono_literals;
     try {
         auto shm_params = ShmParameters::Create(ShmKey::PARAMS, 0666);
-        shm_params->max_drones = 10;
 
-        const auto queue_size =
-            SmhQueue<pid_t>::CalcSize(shm_params->max_drones);
-        auto shm_in_queue =
-            ShmProcQueue::Create(ShmKey::QUEUE1, 0666, queue_size);
-        shm_in_queue.Detach();
-        auto smh_out_queue =
-            ShmProcQueue::Create(ShmKey::QUEUE2, 0666, queue_size);
-        smh_out_queue.Detach();
+        const auto queue_size = Queue<pid_t>::CalcSize(shm_params->max_drones);
+        auto in_queue =
+            ShmProcQueue::Create(ShmKey::IN_QUEUE, 0666, queue_size);
+        auto out_queue =
+            ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0666, queue_size);
+        auto tunnel1 = ShmTunnelData::Create(ShmKey::TUNNEL1, 0666);
+        auto tunnel2 = ShmTunnelData::Create(ShmKey::TUNNEL2, 0666);
 
         shm_params.Detach();
 
@@ -45,8 +43,14 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
         // const auto& logger = Err(Logger::Create("main"));
 
         auto drone_process = Process::Create({"./drone"});
+        auto slept2 = Thread::SleepFor(280ms);
+        auto drone_process2 = Process::Create({"./drone"});
+        slept2 = Thread::SleepFor(280ms);
+        auto drone_process3 = Process::Create({"./drone"});
 
         drone_process.Wait();
+        drone_process2.Wait();
+        drone_process3.Wait();
         auto slept = Thread::SleepFor(100ms);
         logger_process.TermWait();
     } catch (std::exception& e) {

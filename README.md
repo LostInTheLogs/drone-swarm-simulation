@@ -62,14 +62,14 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 
 ### Baza
 
-- [ ] dwa jednokierunkowe w danej chwili wejścia/wyjścia
+- [x] dwa jednokierunkowe w danej chwili wejścia/wyjścia
 - [ ] maksymalnie P dronów w bazie
 
 ## Drony
 
-- [ ] po ładowaniu bateri $T_1$ opuszcza bazę
+- [x] po ładowaniu bateri $T_1$ opuszcza bazę
 - [x] maksymalny czas lotu $T_2$
-- [ ] powrót do bazy przy baterii < 20%
+- [x] powrót do bazy przy baterii < 20%
 - [x] zniszczenie przy baterii = 0%
 - [x] po $X_i$ ładowaniach utilizacja
 - [x] **sig3**: samobójstwo (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%

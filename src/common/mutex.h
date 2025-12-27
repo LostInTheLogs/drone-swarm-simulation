@@ -2,6 +2,9 @@
 
 #include "ipc/ipc.h"
 #include "ipc/semaphore_set.h"
+
+#define RWMUT_SEMS(P) SemIds::P##_A0, SemIds::P##_B1, SemIds::P##_C1
+
 class RWMutex {
   public:
     template <auto A0, auto B1, auto C1>
@@ -21,10 +24,12 @@ class RWMutex {
     auto operator=(const RWMutex &) -> RWMutex & = default;
     ~RWMutex() = default;
 
-    void LockRead();
-    void UnlockRead();
-    void LockWrite();
-    void UnlockWrite();
+    auto LockRead(Retry retry = Retry::UNTIL_TERM)
+        -> std::expected<void, IpcError>;
+    void UnlockRead(Retry retry = Retry::UNTIL_TERM);
+    auto LockWrite(Retry retry = Retry::UNTIL_TERM)
+        -> std::expected<void, IpcError>;
+    void UnlockWrite(Retry retry = Retry::UNTIL_TERM);
 
   private:
     RWMutex(Semaphore reader_count, Semaphore reader_count_mut,

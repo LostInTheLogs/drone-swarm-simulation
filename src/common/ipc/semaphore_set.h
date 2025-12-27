@@ -145,29 +145,40 @@ class Semaphore {
     }
 
     [[nodiscard]]
-    auto Wait() {
-        SemOp({
-            .sem_num = sem_num_,
-            .sem_op = -1,
-            .sem_flg = 0,
-        });
+    auto Wait(Retry retry = Retry::UNTIL_TERM, short flags = SEM_UNDO)
+        -> std::expected<void, IpcError> {
+        return SemOp(
+            {
+                .sem_num = sem_num_,
+                .sem_op = -1,
+                .sem_flg = flags,
+            },
+            retry);
     }
 
     [[nodiscard]]
-    auto WaitForZero() {
-        SemOp({
-            .sem_num = sem_num_,
-            .sem_op = 0,
-            .sem_flg = 0,
-        });
+    auto WaitForZero(Retry retry = Retry::UNTIL_TERM, short flags = 0)
+        -> std::expected<void, IpcError> {
+        return SemOp(
+            {
+                .sem_num = sem_num_,
+                .sem_op = 0,
+                .sem_flg = flags,
+            },
+            retry);
     }
 
-    void Signal() const {
-        SemOp({
-            .sem_num = sem_num_,
-            .sem_op = 1,
-            .sem_flg = 0,
-        });
+    void Signal(Retry retry = Retry::UNTIL_TERM, short flags = SEM_UNDO) const {
+        auto succes = SemOp(
+            {
+                .sem_num = sem_num_,
+                .sem_op = 1,
+                .sem_flg = flags,
+            },
+            retry);
+        if (!succes) {
+            throw IpcError(succes.error());
+        }
     }
     [[nodiscard]] auto GetVal() const -> int {
         auto ret = semctl(semset_id_, sem_num_, GETVAL);
@@ -182,15 +193,22 @@ class Semaphore {
     Semaphore(int semset_id, unsigned short sem_num)
         : semset_id_(semset_id), sem_num_(sem_num) {}
 
-    void SemOp(sembuf sop) const {
+    [[nodiscard]] auto SemOp(sembuf sop, Retry retry) const
+        -> std::expected<void, IpcError> {
         while (true) {
             if (semop(semset_id_, &sop, 1) == 0) {
-                return;
+                return {};
             }
-            if (errno != EINTR || CurrentProcess::TerminateReceived()) {
-                throw IpcError(IpcType::SEMAPHORE_SET, -1, semset_id_, errno);
+            if (retry == Retry::ALWAYS) {
+                continue;
+            }
+            if (retry == Retry::NEVER ||
+                (errno != EINTR || CurrentProcess::TerminateReceived())) {
+                return std::unexpected(
+                    IpcError(IpcType::SEMAPHORE_SET, -1, semset_id_, errno));
             }
         }
+        return {};
     }
 
     int semset_id_;

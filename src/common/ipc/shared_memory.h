@@ -46,7 +46,9 @@ class SharedMemory {
     [[nodiscard]]
     static auto Get(ShmKey queue_key, size_t size = sizeof(T)) -> SharedMemory {
         auto mem_id = GetMemId(queue_key, 0, size);
-        return SharedMemory(mem_id);
+        auto ret = SharedMemory(mem_id);
+        ret.Attach();
+        return std::move(ret);
     }
 
     void Disown() {
@@ -78,6 +80,10 @@ class SharedMemory {
             throw IpcError(IpcType::SHARED_MEMORY, -1, id_, errno);
         }
         ptr_ = nullptr;
+    }
+
+    auto operator*() -> T& {
+        return *ptr_;
     }
 
     auto operator->() -> T* {

@@ -9,6 +9,7 @@
 #include "ipc/semaphore_set.h"
 #include "logger.h"
 #include "mutex.h"
+#include "process.h"
 #include "thread.h"
 #include "thread_utils.h"
 
@@ -28,9 +29,10 @@ constexpr auto GetLogger() -> Logger& {
     return g_logger;
 }
 
-constexpr auto g_ignore_suicide_bat_thr = 20;
-constexpr auto g_low_bat_thr = 20;
-constexpr auto g_max_charges = 2;
+struct Tunnel {
+    SharedMemory<TunnelData> data;
+    Semaphore mutex;
+};
 
 struct DroneState {
     ThreadMutex mutex;
@@ -41,17 +43,19 @@ struct DroneState {
     bool suicide_order_received = false;
 };
 
-constexpr auto ShouldReturn(const DroneState& state) -> bool {
-    return !state.docked && state.bat_level < g_low_bat_thr &&
+constexpr auto ShouldReturn(const GlobalParameters& params,
+                            const DroneState& state) -> bool {
+    return !state.docked && state.bat_level < params.low_bat_thr &&
            !state.suicide_order_received;
 };
 constexpr auto ShouldLeave(const DroneState& state) -> bool {
     return state.docked &&
            (state.bat_level == 100 || state.suicide_order_received);
 };
-constexpr auto StateChanged(const DroneState& state) -> bool {
-    return (ShouldLeave(state) || ShouldReturn(state) || state.bat_level <= 0 ||
-            CurrentProcess::TerminateReceived());
+constexpr auto StateChanged(const GlobalParameters& params,
+                            const DroneState& state) -> bool {
+    return (ShouldLeave(state) || ShouldReturn(params, state) ||
+            state.bat_level <= 0 || CurrentProcess::TerminateReceived());
 };
 
 constexpr void SetupSignals() {
@@ -61,7 +65,7 @@ constexpr void SetupSignals() {
     pthread_sigmask(SIG_BLOCK, &sigset, nullptr);
 }
 
-constexpr void SignalThread(DroneState& state) {
+constexpr void SignalThread(const GlobalParameters& params, DroneState& state) {
     sigset_t sigset;
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGUSR1);
@@ -71,7 +75,7 @@ constexpr void SignalThread(DroneState& state) {
         sigwait(&sigset, &sig);
 
         state.mutex.Lock();
-        if (state.bat_level < g_ignore_suicide_bat_thr) {
+        if (state.bat_level < params.ignore_suicide_bat_thr) {
             GetLogger().Info("Suicide mission order ignored");
             state.mutex.Unlock();
             continue;
@@ -80,10 +84,12 @@ constexpr void SignalThread(DroneState& state) {
         GetLogger().Info("Suicide mission order accepted");
         state.changed.Broadcast();
         state.mutex.Unlock();
+        return;
     }
 }
 
-constexpr void BatteryThread(DroneState& state) {
+constexpr void BatteryThread(const GlobalParameters& params,
+                             DroneState& state) {
     auto next = MonotonicClock::now();
     const auto dur = 50ms;
 
@@ -108,7 +114,7 @@ constexpr void BatteryThread(DroneState& state) {
         }
         state.bat_level = clamped;
 
-        if (StateChanged(state)) {
+        if (StateChanged(params, state)) {
             state.changed.Broadcast();
         }
 
@@ -123,10 +129,150 @@ constexpr void BatteryThread(DroneState& state) {
     }
 }
 
-constexpr void MainThread(DroneState& state) {
+void Err(auto&& val) {
+    if (!val) {
+        throw std::forward<decltype(val)>(val).error();
+    }
+}
+
+constexpr auto WaitInQueue(DroneState& state, ProcQueue& queue, RWMutex& mut)
+    -> std::expected<void, std::monostate> {
+    const auto pid = g_curr_process.GetPid();
+    int not_pid = pid - 1;
+
+    if (!mut.LockWrite()) {
+        return std::unexpected(std::monostate());
+    }
+    state.mutex.Lock();
+    queue.Push(pid, 100 - state.bat_level);
+    state.mutex.Unlock();
+    mut.UnlockWrite();
+
+    Err(mut.LockRead(Retry::ALWAYS));
+    while (queue.Peek().value_or(not_pid) != pid) {
+        mut.UnlockRead();
+        if (!Thread::SleepFor(50ms)) {
+            Err(mut.LockWrite(Retry::ALWAYS));
+            queue.Remove(pid);
+            mut.UnlockWrite();
+            return std::unexpected(std::monostate());
+        }
+        Err(mut.LockRead(Retry::ALWAYS));
+    }
+    mut.UnlockRead();
+
+    return {};
+};
+
+constexpr auto EnterOneTunnel(TunnelDir dir, Tunnel& tun)
+    -> std::expected<bool, std::monostate> {
+    bool entered = false;
+    if (!tun.mutex.Wait()) {
+        return std::unexpected(std::monostate());
+    }
+    entered = tun.data->dir == TunnelDir::EMPTY ||
+              (tun.data->dir == dir && tun.data->drones < 1);
+    if (entered) {
+        tun.data->dir = dir;
+        tun.data->drones++;
+    }
+    tun.mutex.Signal();
+    return entered;
+}
+
+constexpr auto EnterTunnels(TunnelDir dir, Tunnel& tun1, Tunnel& tun2)
+    -> std::expected<std::reference_wrapper<Tunnel>, std::monostate> {
+    while (true) {
+        auto entered = EnterOneTunnel(dir, tun1);
+        if (!entered) {
+            return std::unexpected(std::monostate());
+        }
+        if (*entered) {
+            return tun1;
+        }
+
+        entered = EnterOneTunnel(dir, tun2);
+        if (!entered) {
+            return std::unexpected(std::monostate());
+        }
+        if (*entered) {
+            return tun2;
+        }
+
+        if (!Thread::SleepFor(50ms)) {
+            return std::unexpected(std::monostate());
+        }
+    }
+};
+
+constexpr auto EnterExitSequence(DroneState& state, ProcQueue& queue,
+                                 RWMutex& queue_mut, TunnelDir dir,
+                                 Tunnel& tun1, Tunnel& tun2)
+    -> std::expected<bool, std::monostate> {
+    if (!WaitInQueue(state, queue, queue_mut)) {
+        return std::unexpected(std::monostate());
+    }
+
+    auto entered_tun = EnterTunnels(dir, tun1, tun2);
+
+    Err(queue_mut.LockWrite(Retry::ALWAYS));
+    queue.Pop();
+    queue_mut.UnlockWrite();
+
+    if (!entered_tun) {
+        return std::unexpected(std::monostate());
+    }
+
+    if (dir == TunnelDir::OUT) {
+        state.mutex.Lock();
+        state.docked = false;
+        state.mutex.Unlock();
+        GetLogger().Info("Left the charging pad");
+    }
+
+    if (!Thread::SleepFor(500ms)) {
+        return std::unexpected(std::monostate());
+    }
+
+    auto& tun = (*entered_tun).get();
+
+    if (!tun.mutex.Wait()) {
+        return std::unexpected(std::monostate());
+    }
+    tun.data->drones--;
+    if (tun.data->drones == 0) {
+        tun.data->dir = TunnelDir::EMPTY;
+    }
+    tun.mutex.Signal();
+
+    if (dir == TunnelDir::IN) {
+        state.mutex.Lock();
+        state.docked = true;
+        state.mutex.Unlock();
+        GetLogger().Info("Back on the charging pad");
+    }
+
+    return {};
+}
+
+constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
+    const auto queue_size = Queue<pid_t>::CalcSize(params.max_drones);
+
+    auto sems = SemaphoreSet<SemIds>::Get(SemSetKey::MAIN);
+
+    auto in_queue = ShmProcQueue::Get(ShmKey::IN_QUEUE, queue_size);
+    auto in_mut = RWMutex::Get<RWMUT_SEMS(IN_QUEUE)>(sems);
+    auto out_queue = ShmProcQueue::Get(ShmKey::OUT_QUEUE, queue_size);
+    auto out_mut = RWMutex::Get<RWMUT_SEMS(OUT_QUEUE)>(sems);
+
+    Tunnel tunnel1{.data = ShmTunnelData::Get(ShmKey::TUNNEL1),
+                   .mutex = Semaphore::Get(sems, SemIds::TUNNEL1_1)};
+    Tunnel tunnel2{.data = ShmTunnelData::Get(ShmKey::TUNNEL2),
+                   .mutex = Semaphore::Get(sems, SemIds::TUNNEL2_1)};
+
     state.mutex.Lock();
     while (true) {
-        while (!StateChanged(state)) {
+        while (!StateChanged(params, state)) {
             state.changed.Wait(state.mutex);
         }
         if (state.bat_level <= 0 || CurrentProcess::TerminateReceived()) {
@@ -138,31 +284,31 @@ constexpr void MainThread(DroneState& state) {
             state.mutex.Unlock();
 
             GetLogger().Info("Leaving the base");
-            if (!Thread::SleepFor(500ms)) {  // TODO: leave base
-                break;
+            if (!EnterExitSequence(state, *out_queue, out_mut, TunnelDir::OUT,
+                                   tunnel1, tunnel2)) {
+                return;
             }
+            GetLogger().Info("Left the base");
 
             state.mutex.Lock();
-            state.docked = false;
-            GetLogger().Info("Left the base");
             continue;
         }
-        if (ShouldReturn(state)) {
+        if (ShouldReturn(params, state)) {
             state.mutex.Unlock();
 
             GetLogger().Info("Returning to the base");
-            if (!Thread::SleepFor(500ms)) {  // TODO: go to base
-                break;
+            if (!EnterExitSequence(state, *in_queue, in_mut, TunnelDir::IN,
+                                   tunnel2, tunnel1)) {
+                return;
             }
+            GetLogger().Info("Back at the base");
 
             state.mutex.Lock();
-            GetLogger().Info("Back at the base");
-            if (state.charges == g_max_charges) {
+            if (state.charges == params.max_charges) {
                 GetLogger().Info("Max charging cycles, decomissioning");
                 CurrentProcess::Get().Signal(SIGTERM);
                 break;
             }
-            state.docked = true;
             continue;
         }
     }
@@ -176,31 +322,16 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
 
         SetupSignals();
 
+        auto params = ShmParameters::Get(ShmKey::PARAMS);
         DroneState state;
 
-        // auto shm_params = ShmParameters::Create(ShmKey::PARAMS, 0666);
-        // shm_params->max_drones = 10;
-        //
-        // const auto queue_size =
-        //     SmhQueue<pid_t>::CalcSize(shm_params->max_drones);
-        // auto shm_in_queue = ShmProcQueue::Get(ShmKey::QUEUE1, queue_size);
-        // auto sems = SemaphoreSet<SemIds>::Get(SemSetKey::MAIN);
-        // auto in_queue_mut = RWMutex::Get<SemIds::QUEUE1_A0,
-        // SemIds::QUEUE1_B1,
-        //                                  SemIds::QUEUE1_C1>(sems);
-        // auto smh_out_queue = ShmProcQueue::Get(ShmKey::QUEUE2, queue_size);
-        // auto out_queue_mut = RWMutex::Get<SemIds::QUEUE2_A0,
-        // SemIds::QUEUE2_B1,
-        //                                   SemIds::QUEUE2_C1>(sems);
-        // shm_params.Detach();
+        [[maybe_unused]] const auto signal_thread = Thread::Create(
+            [&state, &params]() { SignalThread(*params, state); });
 
-        [[maybe_unused]] const auto signal_thread =
-            Thread::Create([&state]() { SignalThread(state); });
+        [[maybe_unused]] const auto battery_thread = Thread::Create(
+            [&state, &params]() { BatteryThread(*params, state); });
 
-        [[maybe_unused]] const auto battery_thread =
-            Thread::Create([&state]() { BatteryThread(state); });
-
-        MainThread(state);
+        MainThread(*params, state);
 
         GetLogger().Info("Goodbye");
     } catch (std::exception& e) {
