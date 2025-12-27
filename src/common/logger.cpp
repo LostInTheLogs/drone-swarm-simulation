@@ -70,25 +70,42 @@ auto LogPrinter::Create() -> LogPrinter {
 auto LogPrinter::FormatLog(Logger::Payload log) -> std::string {
     string_view msg(log.msg);
     string_view sender(log.sender_name);
-    auto level = LogLevelToStr(log.level);
-
-    auto local_time =
+    const auto level = LogLevelToStr(log.level);
+    const auto local_time =
         std::chrono::zoned_time(std::chrono::current_zone(), log.time);
+    const auto color = LogLevelToColor(log.level);
+
+    const auto* const clear_color = "\033[0m";
+    const auto col_msg = format("{}{}{}", color, msg, clear_color);
 
     return format("[{:%F %T}] {:>5} {}({}): {}\n", local_time, level, sender,
-                  log.sender_pid, msg);
+                  log.sender_pid, col_msg);
+}
+
+auto LogPrinter::LogLevelToColor(Logger::LogLevel level) -> std::string {
+    switch (level) {
+        case Logger::DEBUG:
+            return "\033[37m";
+        case Logger::INFO:
+            return "\033[36m";
+        case Logger::WARNING:
+            return "\033[33m";
+        case Logger::ERROR:
+            return "\033[31m";
+    }
+    return {};
 }
 
 auto LogPrinter::LogLevelToStr(Logger::LogLevel level) -> std::string {
     switch (level) {
         case Logger::DEBUG:
-            return "DEBUG";
+            return "\033[1;37mDEBUG\033[0m";
         case Logger::INFO:
-            return "INFO";
+            return "\033[1;36mINFO \033[0m";
         case Logger::WARNING:
-            return "WARN";
+            return "\033[1;33mWARN \033[0m";
         case Logger::ERROR:
-            return "ERROR";
+            return "\033[1;31mERROR\033[0m";
     }
     return {};
 }
@@ -119,4 +136,16 @@ void LogPrinter::PrintError(std::string_view sender, std::string_view msg) {
     CopyStrToArray(sender, payload.sender_name);
     const auto formatted = FormatLog(payload);
     std::cerr << formatted;
+}
+void LogPrinter::Print(std::string_view sender, Logger::LogLevel level,
+                       std::string_view msg) {
+    Logger::Payload payload{.level = level,
+                            .sender_pid = getpid(),
+                            .sender_name = {},
+                            .msg = {},
+                            .time = std::chrono::system_clock::now()};
+    CopyStrToArray(msg, payload.msg);
+    CopyStrToArray(sender, payload.sender_name);
+    const auto formatted = FormatLog(payload);
+    std::cout << formatted;
 }

@@ -135,7 +135,13 @@ auto Process::Signal(int signal) const -> void {
 auto Process::Wait() const -> int {
     int status{};
 
-    waitpid(process_id_, &status, 0);
+    while (true) {
+        auto success = waitpid(process_id_, &status, 0);
+        const auto interrupted = success == -1 && errno == EINTR;
+        if (!interrupted || CurrentProcess::TerminateReceived()) {
+            break;
+        }
+    }
 
     return status;
 }

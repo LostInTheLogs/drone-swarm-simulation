@@ -16,22 +16,35 @@ auto HandleExpectedError(const auto& expected) {
     }
     return static_cast<bool>(expected);
 }
+
+constexpr void SetupSignals() {
+    struct sigaction action{};
+    action.sa_handler = SIG_IGN;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+    sigaction(SIGINT, &action, nullptr);
+}
+
 }  // namespace
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int {
     try {
-        auto log_receiver = LogPrinter::Create();
+        SetupSignals();
+        auto log_printer = LogPrinter::Create();
         CurrentProcess::SignalReady();
 
-        auto success = log_receiver.ReceiveForever();
+        LogPrinter::Print("logger", Logger::LogLevel::INFO, "Listening...");
+        auto success = log_printer.ReceiveForever();
         if (!HandleExpectedError(success)) {
             return 1;
         }
 
     } catch (std::exception& e) {
         LogPrinter::PrintError("logger", e.what());
+        LogPrinter::Print("logger", Logger::LogLevel::INFO, "Goodbye");
         return 1;
     }
 
+    LogPrinter::Print("logger", Logger::LogLevel::INFO, "Goodbye");
     return 0;
 }

@@ -17,16 +17,16 @@ enum class MessageTypeId : long { LOGGER = 1 };
 enum class SemSetKey : key_t { MAIN = g_rand_key };
 
 // NOLINTNEXTLINE(performance-enum-size)
-enum class ShmKey : key_t { PARAMS = g_rand_key, IN_QUEUE, OUT_QUEUE };
+enum class ShmKey : key_t { PARAMS = g_rand_key, QUEUE1, QUEUE2 };
 
 // NOLINTNEXTLINE(performance-enum-size)
 enum class SemIds : int {
-    IN_QUEUE_A0,
-    IN_QUEUE_B1,
-    IN_QUEUE_C1,
-    OUT_QUEUE_A0,
-    OUT_QUEUE_B1,
-    OUT_QUEUE_C1,
+    QUEUE1_A0,
+    QUEUE1_B1,
+    QUEUE1_C1,
+    QUEUE2_A0,
+    QUEUE2_B1,
+    QUEUE2_C1,
     COUNT,
 };
 
@@ -38,10 +38,8 @@ constexpr auto InitPairsValid(
     -> bool {
     auto len = static_cast<size_t>(E::COUNT);
     for (size_t i = 0; i < len; ++i) {
-        for (size_t j = i + 1; j < len; ++j) {
-            if (init[i].first == init[j].first) {  // NOLINT
-                return false;
-            }
+        if (i != static_cast<size_t>(init[i].first)) {  // NOLINT
+            return false;
         }
     }
     return true;
@@ -50,34 +48,34 @@ constexpr auto InitPairsValid(
 template <typename E>
 constexpr auto InitPairsToArray(
     const std::array<std::pair<E, int>, static_cast<size_t>(E::COUNT)>& init)
-    -> std::span<const unsigned short> {
-    static std::array<unsigned short, static_cast<size_t>(E::COUNT)> data{};
+    -> std::array<unsigned short, static_cast<size_t>(E::COUNT)> {
+    std::array<unsigned short, static_cast<size_t>(E::COUNT)> data{};
     for (const auto& [id, value] : init) {
         data.at(static_cast<size_t>(id)) = value;
     }
-    return {data.begin(), data.end()};
+    return data;
 }
 }  // namespace detail
 
 template <typename E>
 class SemInit {
   public:
-    constexpr auto Get() -> std::span<const unsigned short> = delete;
+    constexpr auto Get() -> std::array<const unsigned short, E::COUNT> = delete;
 };
 
 template <>
 class SemInit<SemIds> {
   public:
     static constexpr auto init_ = std::to_array<std::pair<SemIds, int>>({
-        {SemIds::IN_QUEUE_A0, 0},   //
-        {SemIds::IN_QUEUE_B1, 1},   //
-        {SemIds::IN_QUEUE_C1, 1},   //
-        {SemIds::OUT_QUEUE_A0, 0},  //
-        {SemIds::OUT_QUEUE_B1, 1},  //
-        {SemIds::OUT_QUEUE_C1, 1},  //
+        {SemIds::QUEUE1_A0, 0},  //
+        {SemIds::QUEUE1_B1, 1},  //
+        {SemIds::QUEUE1_C1, 1},  //
+        {SemIds::QUEUE2_A0, 0},  //
+        {SemIds::QUEUE2_B1, 1},  //
+        {SemIds::QUEUE2_C1, 1},  //
     });
 
-    static constexpr auto Get() -> std::span<const unsigned short> {
+    static constexpr auto Get() -> auto {
         static_assert(detail::InitPairsValid(init_));
         return detail::InitPairsToArray<SemIds>(init_);
     }

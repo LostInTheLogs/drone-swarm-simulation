@@ -1,7 +1,6 @@
 #include <unistd.h>
 
 #include <csignal>
-#include <iostream>
 
 #include "globals.h"
 #include "ipc/ipc.h"
@@ -25,18 +24,19 @@ auto Err(auto&& val) -> decltype(auto) {
 auto main(int /*argc*/, char* /*argv*/[]) -> int {
     using namespace std::chrono_literals;
     try {
-        auto params = ShmParameters::Create(ShmKey::PARAMS, 0666);
-        params->max_drones = 10;
+        auto shm_params = ShmParameters::Create(ShmKey::PARAMS, 0666);
+        shm_params->max_drones = 10;
 
-        const auto queue_size = SmhQueue<pid_t>::CalcSize(params->max_drones);
-        auto in_queue =
-            ShmProcQueue::Create(ShmKey::IN_QUEUE, 0666, queue_size);
-        in_queue.Detach();
-        auto out_queue =
-            ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0666, queue_size);
-        out_queue.Detach();
+        const auto queue_size =
+            SmhQueue<pid_t>::CalcSize(shm_params->max_drones);
+        auto shm_in_queue =
+            ShmProcQueue::Create(ShmKey::QUEUE1, 0666, queue_size);
+        shm_in_queue.Detach();
+        auto smh_out_queue =
+            ShmProcQueue::Create(ShmKey::QUEUE2, 0666, queue_size);
+        smh_out_queue.Detach();
 
-        params.Detach();
+        shm_params.Detach();
 
         auto sems = SemaphoreSet<SemIds>::Create(SemSetKey::MAIN, 0666);
 
@@ -47,7 +47,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
         auto drone_process = Process::Create({"./drone"});
 
         drone_process.Wait();
-        auto slept = Thread::SleepFor(1s);
+        auto slept = Thread::SleepFor(100ms);
         logger_process.TermWait();
     } catch (std::exception& e) {
         LogPrinter::PrintError("main", e.what());

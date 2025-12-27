@@ -1,11 +1,20 @@
 #pragma once
 
+#include "ipc/ipc.h"
 #include "ipc/semaphore_set.h"
 class RWMutex {
   public:
-    // mut initalized with 1, count with 0
-    RWMutex(Semaphore reader_count, Semaphore reader_count_mut,
-            Semaphore writer_mut);
+    template <auto A0, auto B1, auto C1>
+    static auto Get(const SemaphoreSet<std::remove_cvref_t<decltype(A0)>> &sems)
+        -> RWMutex {
+        using E = std::remove_cvref_t<decltype(A0)>;
+        static_assert(SemInit<E>::Get()[static_cast<size_t>(A0)] == 0);
+        static_assert(SemInit<E>::Get()[static_cast<size_t>(B1)] == 1);
+        static_assert(SemInit<E>::Get()[static_cast<size_t>(C1)] == 1);
+        return RWMutex(Semaphore::Get(sems, A0), Semaphore::Get(sems, B1),
+                       Semaphore::Get(sems, C1));
+    }
+
     RWMutex(RWMutex &&) = default;
     RWMutex(const RWMutex &) = default;
     auto operator=(RWMutex &&) -> RWMutex & = default;
@@ -18,6 +27,8 @@ class RWMutex {
     void UnlockWrite();
 
   private:
+    RWMutex(Semaphore reader_count, Semaphore reader_count_mut,
+            Semaphore writer_mut);
     Semaphore reader_count_;
     Semaphore reader_count_mut_;
     Semaphore writer_mut_;

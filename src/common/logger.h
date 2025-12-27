@@ -48,10 +48,13 @@ class LogPrinter {
     auto ReceiveForever() -> std::expected<void, IpcError>;
 
     static void PrintError(std::string_view sender, std::string_view msg);
+    static void Print(std::string_view sender, Logger::LogLevel level,
+                      std::string_view msg);
 
   private:
     static auto FormatLog(Logger::Payload log) -> std::string;
     static auto LogLevelToStr(Logger::LogLevel level) -> std::string;
+    static auto LogLevelToColor(Logger::LogLevel level) -> std::string;
 
     explicit LogPrinter(IpcMessageQueue queue);
     IpcMessageQueue queue_;
