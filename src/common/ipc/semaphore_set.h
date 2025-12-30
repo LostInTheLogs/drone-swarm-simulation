@@ -10,10 +10,10 @@
 #include "process.h"
 
 union semun {
-    int setval;                     // Value for SETVAL
-    struct semid_ds* stat_set_buf;  // Buffer for IPC_STAT, IPC_SET
-    unsigned short* get_set_array;  // Array for GETALL, SETALL
-    struct seminfo* info_buf;       // Buffer for IPC_INFO (Linux-specific)
+    int val;                // Value for SETVAL
+    struct semid_ds* buf;   // Buffer for IPC_STAT, IPC_SET
+    unsigned short* array;  // Array for GETALL, SETALL
+    // struct seminfo* _buf;       // Buffer for IPC_INFO (Linux-specific)
 };
 
 template <typename E>
@@ -73,7 +73,7 @@ class SemaphoreSet {
         auto sem_id = GetSemId(sem_key, permissions | IPC_CREAT | IPC_EXCL);
 
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-        semun arg{.get_set_array = const_cast<unsigned short*>(init.data())};
+        semun arg{.array = const_cast<unsigned short*>(init.data())};
         if (semctl(sem_id, 0, SETALL, arg) == -1) {
             throw IpcError(IpcType::SEMAPHORE_SET, key, sem_id, errno);
         }
@@ -145,7 +145,7 @@ class Semaphore {
     }
 
     [[nodiscard]]
-    auto Wait(Retry retry = Retry::UNTIL_TERM, short flags = SEM_UNDO)
+    auto Wait(Retry retry = Retry::UNTIL_TERM, short flags = 0)
         -> std::expected<void, IpcError> {
         return SemOp(
             {
@@ -168,7 +168,7 @@ class Semaphore {
             retry);
     }
 
-    void Signal(Retry retry = Retry::UNTIL_TERM, short flags = SEM_UNDO) const {
+    void Signal(Retry retry = Retry::UNTIL_TERM, short flags = 0) const {
         auto succes = SemOp(
             {
                 .sem_num = sem_num_,
@@ -180,6 +180,14 @@ class Semaphore {
             throw IpcError(succes.error());
         }
     }
+
+    void Set(int val) const {
+        semun arg{.val = val};
+        if (semctl(semset_id_, sem_num_, SETVAL, arg) == -1) {
+            throw IpcError(IpcType::SEMAPHORE_SET, -1, semset_id_, errno);
+        }
+    }
+
     [[nodiscard]] auto GetVal() const -> int {
         auto ret = semctl(semset_id_, sem_num_, GETVAL);
         if (ret == -1) {
@@ -199,11 +207,9 @@ class Semaphore {
             if (semop(semset_id_, &sop, 1) == 0) {
                 return {};
             }
-            if (retry == Retry::ALWAYS) {
-                continue;
-            }
-            if (retry == Retry::NEVER ||
-                (errno != EINTR || CurrentProcess::TerminateReceived())) {
+            if (retry == Retry::NEVER || errno != EINTR ||
+                (retry == Retry::UNTIL_TERM &&
+                 CurrentProcess::TerminateReceived())) {
                 return std::unexpected(
                     IpcError(IpcType::SEMAPHORE_SET, -1, semset_id_, errno));
             }

@@ -56,14 +56,14 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 
 ## Operator
 
-- [ ] co $T_k$ uzupełnia braki dronów (jeśli jest miejsce w bazie)
-- [ ] **sig1**: zwiększa maksymalną ilość dronów w bazie 2x (?)
-- [ ] **sig2**: zmniejsza maksymalną ilość dronów w bazie 2x (?)
+- [x] co $T_k$ uzupełnia braki dronów (jeśli jest miejsce w bazie)
+- [ ] **sig1**: zwiększa maksymalną ilość dronów 2x
+- [ ] **sig2**: zmniejsza maksymalną ilość dronów 2x
 
 ### Baza
 
 - [x] dwa jednokierunkowe w danej chwili wejścia/wyjścia
-- [ ] maksymalnie P dronów w bazie
+- [x] maksymalnie P dronów w bazie
 
 ## Drony
 
@@ -73,11 +73,6 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 - [x] zniszczenie przy baterii = 0%
 - [x] po $X_i$ ładowaniach utilizacja
 - [x] **sig3**: samobójstwo (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%
-
-### Leaving base:
-
-- wait Out
-- try
 
 # Testy
 

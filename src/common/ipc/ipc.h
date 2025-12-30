@@ -27,22 +27,26 @@ enum class SemSetKey : key_t { MAIN = g_rand_key };
 // NOLINTNEXTLINE(performance-enum-size)
 enum class ShmKey : key_t {
     PARAMS = g_rand_key,
-    TUNNEL1,
-    TUNNEL2,
+    BASE_DATA,
     IN_QUEUE,
-    OUT_QUEUE
+    OUT_QUEUE,
+    DRONES
 };
 
 // NOLINTNEXTLINE(performance-enum-size)
 enum class SemIds : int {
     TUNNEL1_1,
     TUNNEL2_1,
+    FREE_SPOTS_BASE,
     IN_QUEUE_A0,
     IN_QUEUE_B1,
     IN_QUEUE_C1,
     OUT_QUEUE_A0,
     OUT_QUEUE_B1,
     OUT_QUEUE_C1,
+    DRONES_A0,
+    DRONES_B1,
+    DRONES_C1,
     COUNT,
 };
 
@@ -83,14 +87,18 @@ template <>
 class SemInit<SemIds> {
   public:
     static constexpr auto init_ = std::to_array<std::pair<SemIds, int>>({
-        {SemIds::TUNNEL1_1, 1},     //
-        {SemIds::TUNNEL2_1, 1},     //
-        {SemIds::IN_QUEUE_A0, 0},   //
-        {SemIds::IN_QUEUE_B1, 1},   //
-        {SemIds::IN_QUEUE_C1, 1},   //
-        {SemIds::OUT_QUEUE_A0, 0},  //
-        {SemIds::OUT_QUEUE_B1, 1},  //
-        {SemIds::OUT_QUEUE_C1, 1},  //
+        {SemIds::TUNNEL1_1, 1},        //
+        {SemIds::TUNNEL2_1, 1},        //
+        {SemIds::FREE_SPOTS_BASE, 0},  //
+        {SemIds::IN_QUEUE_A0, 0},      //
+        {SemIds::IN_QUEUE_B1, 1},      //
+        {SemIds::IN_QUEUE_C1, 1},      //
+        {SemIds::OUT_QUEUE_A0, 0},     //
+        {SemIds::OUT_QUEUE_B1, 1},     //
+        {SemIds::OUT_QUEUE_C1, 1},     //
+        {SemIds::DRONES_A0, 0},        //
+        {SemIds::DRONES_B1, 1},        //
+        {SemIds::DRONES_C1, 1},        //
     });
 
     static constexpr auto Get() -> auto {
@@ -108,21 +116,3 @@ class IpcError : public std::system_error {
   private:
     static auto IpcTypeToStr(IpcType ipc_type) -> const char*;
 };
-
-constexpr auto RetryLoopErrno(Retry retry, auto fun, auto success)
-    -> std::expected<void, std::system_error> {
-    while (true) {
-        if (fun() == success) {
-            return {};
-        }
-        if (retry == Retry::ALWAYS) {
-            continue;
-        }
-        if (retry == Retry::NEVER ||
-            (errno != EINTR || CurrentProcess::TerminateReceived())) {
-            return std::unexpected(
-                std::system_error(errno, std::generic_category()));
-        }
-    }
-    return {};
-}

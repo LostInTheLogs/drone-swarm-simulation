@@ -37,6 +37,7 @@ class Process {
     auto TermWait() const -> int;  // NOLINT(*nodiscard*)
     auto Signal(int signal) const -> void;
     auto Wait() const -> int;  // NOLINT(*nodiscard*)
+    void Disown();
 
     static auto WaitReady(PipeReader& pipe) -> void;
 

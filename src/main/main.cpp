@@ -18,7 +18,6 @@ auto Err(auto&& val) -> decltype(auto) {
     }
     return std::forward<decltype(val)>(val).value();
 }
-
 }  // namespace
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int {
@@ -31,27 +30,24 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
             ShmProcQueue::Create(ShmKey::IN_QUEUE, 0666, queue_size);
         auto out_queue =
             ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0666, queue_size);
-        auto tunnel1 = ShmTunnelData::Create(ShmKey::TUNNEL1, 0666);
-        auto tunnel2 = ShmTunnelData::Create(ShmKey::TUNNEL2, 0666);
 
-        shm_params.Detach();
+        const auto drones_arr_size =
+            ShmDrones::value_type::CalcSize(shm_params->max_drones);
+        auto drones_arr =
+            ShmDrones::Create(ShmKey::DRONES, 0666, drones_arr_size);
+
+        auto base = ShmBaseData::Create(ShmKey::BASE_DATA, 0666);
 
         auto sems = SemaphoreSet<SemIds>::Create(SemSetKey::MAIN, 0666);
 
+        shm_params.Detach();
+
         auto logger_process = Process::CreateReady({"./logger"});
 
-        // const auto& logger = Err(Logger::Create("main"));
+        auto operator_proc = Process::Create({"./operator"});
+        operator_proc.Wait();
 
-        auto drone_process = Process::Create({"./drone"});
-        auto slept2 = Thread::SleepFor(280ms);
-        auto drone_process2 = Process::Create({"./drone"});
-        slept2 = Thread::SleepFor(280ms);
-        auto drone_process3 = Process::Create({"./drone"});
-
-        drone_process.Wait();
-        drone_process2.Wait();
-        drone_process3.Wait();
-        auto slept = Thread::SleepFor(100ms);
+        auto slept = Thread::SleepFor(1000ms);
         logger_process.TermWait();
     } catch (std::exception& e) {
         LogPrinter::PrintError("main", e.what());

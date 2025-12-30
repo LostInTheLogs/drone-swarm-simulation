@@ -9,6 +9,8 @@
 template <typename T>
 class SharedMemory {
   public:
+    using value_type = T;
+
     SharedMemory(SharedMemory&& other) noexcept
         : id_(other.id_), ptr_(other.ptr_), owner_(other.owner_) {
         other.owner_ = false;

@@ -146,6 +146,10 @@ auto Process::Wait() const -> int {
     return status;
 }
 
+void Process::Disown() {
+    owner_ = false;
+}
+
 auto Process::WaitReady(PipeReader& pipe) -> void {
     auto read = pipe.Read<char>();
     if (!read) {

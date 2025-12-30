@@ -1,11 +1,4 @@
-
 #include "logger.h"
-
-#include <fcntl.h>
-#include <unistd.h>
-
-#include <cstdio>
-#include <experimental/scope>
 
 #include "process.h"
 
