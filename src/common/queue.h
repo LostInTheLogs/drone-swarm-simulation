@@ -11,7 +11,14 @@
 template <typename T>
 class Queue {
   public:
-    void Push(const T& data, int priority) {
+    Queue() = default;
+    Queue(Queue &&) = delete;
+    Queue(const Queue &) = delete;
+    auto operator=(Queue &&) -> Queue & = default;
+    auto operator=(const Queue &) -> Queue & = default;
+    ~Queue() = default;
+
+    void Push(const T &data, int priority) {
         Item item{.priority = priority, .seq = seq_, .data = data};
         seq_++;
 
@@ -39,7 +46,7 @@ class Queue {
         return ret;
     }
 
-    auto Remove(T item) {
+    void Remove(const T &item) {
         size_t found = 0;
         for (found = 0; found < size_; found++) {
             if (heap_[found].data == item) {
@@ -54,6 +61,7 @@ class Queue {
         std::swap(heap_[found], heap_[size_ - 1]);
         size_--;
         ShiftDown(found);
+        ShiftUp(found);
     }
 
     static auto CalcSize(size_t n) -> size_t {
@@ -65,7 +73,7 @@ class Queue {
         int priority;
         uint64_t seq;
         T data;
-        auto operator<=>(const Item& other) const noexcept
+        auto operator<=>(const Item &other) const noexcept
             -> std::strong_ordering {
             if (priority != other.priority) {
                 return priority <=> other.priority;
@@ -87,7 +95,7 @@ class Queue {
 
     void ShiftUp(size_t node_i) {
         while (true) {
-            if (node_i == 0) {
+            if (node_i <= 0) {
                 break;
             }
 
@@ -108,12 +116,12 @@ class Queue {
             auto max = node;
 
             const auto left = Left(node);
-            if (left <= size_ && left > max) {
+            if (left < size_ && left > max) {
                 max = left;
             }
 
             const auto right = Right(node);
-            if (right <= size_ && right > max) {
+            if (right < size_ && right > max) {
                 max = right;
             }
 
@@ -126,8 +134,8 @@ class Queue {
         }
     }
 
-    uint64_t seq_;
-    size_t size_;
+    uint64_t seq_{};
+    size_t size_{};
     Item heap_[1];  // NOLINT(*-c-arrays)
 };
 // NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index)
