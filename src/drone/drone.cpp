@@ -278,7 +278,7 @@ constexpr auto EnterExitSequence(DroneState& state, BaseState& base,
 }
 
 constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
-    const auto queue_size = Queue<pid_t>::CalcSize(params.max_drones);
+    const auto queue_size = Queue<pid_t>::CalcSize(params.init_drone_count);
 
     auto sems = SemaphoreSet<SemIds>::Get(SemSetKey::MAIN);
 

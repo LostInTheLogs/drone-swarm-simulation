@@ -25,14 +25,15 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
     try {
         auto shm_params = ShmParameters::Create(ShmKey::PARAMS, 0666);
 
-        const auto queue_size = Queue<pid_t>::CalcSize(shm_params->max_drones);
+        const auto queue_size =
+            Queue<pid_t>::CalcSize(shm_params->init_drone_count);
         auto in_queue =
             ShmProcQueue::Create(ShmKey::IN_QUEUE, 0666, queue_size);
         auto out_queue =
             ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0666, queue_size);
 
         const auto drones_arr_size =
-            ShmDrones::value_type::CalcSize(shm_params->max_drones);
+            ShmDrones::value_type::CalcSize(shm_params->init_drone_count);
         auto drones_arr =
             ShmDrones::Create(ShmKey::DRONES, 0666, drones_arr_size);
 
