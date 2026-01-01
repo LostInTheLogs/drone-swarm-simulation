@@ -152,14 +152,44 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
 
             g_curr_process.Signal(SIGTERM);
         };
-        const auto scenario_suicide_order = []() {
-            //
+        const auto scenario_suicide_order = [&]() {
+            Err(state.mut.LockWrite());
+            state.curr_drone_cap = 2;
+            state.mut.UnlockWrite();
+            Err(Thread::SleepFor(200ms));
+            Err(state.mut.LockRead());
+            Process((*state.drones)[0]).Signal(SIGUSR1);
+            state.mut.UnlockRead();
+
+            Err(Thread::SleepFor(200ms));
+
+            Err(state.mut.LockRead());
+            Process((*state.drones)[1]).Signal(SIGUSR1);
+            state.mut.UnlockRead();
+
+            Err(Thread::SleepFor(1300ms));
+
+            Err(state.mut.LockRead());
+            Process((*state.drones)[0]).Signal(SIGUSR1);
+            state.mut.UnlockRead();
+
+            Err(Thread::SleepFor(200ms));
+
+            Err(state.mut.LockRead());
+            Process((*state.drones)[0]).Signal(SIGUSR1);
+            state.mut.UnlockRead();
+
+            Err(Thread::SleepFor(200ms));
+
+            g_curr_process.Signal(SIGTERM);
         };
         const auto scenario_dead_bat_in_tunnel = []() {
-            //
+            Err(Thread::SleepFor(1000ms));
+            g_curr_process.Signal(SIGTERM);
         };
         const auto scenario_tunnel_dir_change = []() {
-            //
+            Err(Thread::SleepFor(1000ms));
+            g_curr_process.Signal(SIGTERM);
         };
 
         switch (scenario) {
@@ -170,6 +200,9 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
                 (void)Thread::Create(scenario_priority_queue);
                 break;
             case SUICIDE_ORDER:
+                Err(state.mut.LockWrite());
+                state.curr_drone_cap = 0;
+                state.mut.UnlockWrite();
                 (void)Thread::Create(scenario_suicide_order);
                 break;
             case DEAD_BAT_IN_TUNNEL:

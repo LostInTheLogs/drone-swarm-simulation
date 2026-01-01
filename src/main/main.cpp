@@ -58,10 +58,22 @@ auto main(int argc, char* argv[]) -> int {
                 shm_params->battery_lifetime = 10s;
                 break;
             case SUICIDE_ORDER:
+                shm_params->init_drone_count = 2;
+                shm_params->battery_lifetime = 800ms;
+                shm_params->tunnel_length = 200ms;
                 break;
             case DEAD_BAT_IN_TUNNEL:
+                shm_params->tun_cap = 1;
+                shm_params->battery_lifetime = 2000ms;
+                shm_params->tunnel_length = 200ms;
+                shm_params->init_drone_count = 10;
+                shm_params->max_drones_at_base = 100;
                 break;
             case TUNNEL_DIR_CHANGE:
+                shm_params->init_drone_count = 4;
+                shm_params->tun_cap = 1;
+                shm_params->tunnel_length = 200ms;
+                shm_params->max_drones_at_base = 100;
                 break;
             case NO_TEST:
             case COUNT:

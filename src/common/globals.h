@@ -27,9 +27,9 @@ struct GlobalParameters {
 
     int max_charges = 0;
     std::chrono::milliseconds battery_lifetime{1000};
-    std::chrono::milliseconds battery_chargetime{1000};
+    std::chrono::milliseconds battery_chargetime{400};
 
-    std::chrono::milliseconds tunnel_length{1000};
+    std::chrono::milliseconds tunnel_length{200};
     unsigned int tun_cap = 2;
 
     int low_bat_thr = 20;

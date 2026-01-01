@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include <format>
 #include <iostream>
 #include <random>
@@ -19,6 +21,7 @@ constexpr auto GetLogger() -> Logger& {
 }
 
 struct Tunnel {
+    int id;
     TunnelData* data;
     Mutex mutex;
 };
@@ -142,6 +145,8 @@ constexpr auto EnterOneTunnel(const GlobalParameters& params, TunnelDir dir,
     entered = tun.data->drones == 0 ||
               (tun.data->dir == dir && tun.data->drones < params.tun_cap);
     if (entered) {
+        GetLogger().Trace(std::format("Entering tun {} dir: {}", tun.id,
+                                      (dir == TunnelDir::IN ? "in" : "out")));
         tun.data->dir = dir;
         tun.data->drones++;
     }
@@ -307,9 +312,11 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
 
     auto data = ShmBaseData::Get(ShmKey::BASE_DATA);
 
-    Tunnel tunnel1{.data = &data->tunnel1,
+    Tunnel tunnel1{.id = 1,
+                   .data = &data->tunnel1,
                    .mutex = Mutex(Semaphore::Get(sems, SemIds::TUNNEL1_1))};
-    Tunnel tunnel2{.data = &data->tunnel2,
+    Tunnel tunnel2{.id = 2,
+                   .data = &data->tunnel2,
                    .mutex = Mutex(Semaphore::Get(sems, SemIds::TUNNEL2_1))};
 
     BaseState base{.free_spots = Semaphore::Get(sems, SemIds::FREE_SPOTS_BASE)};
@@ -375,7 +382,10 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
         auto params = ShmParameters::Get(ShmKey::PARAMS);
         DroneState state;
 
-        if (params->scenario == TestScenario::PRIORITY_QUEUE) {
+        if (params->scenario == TestScenario::PRIORITY_QUEUE ||
+            params->scenario == TestScenario::DEAD_BAT_IN_TUNNEL ||
+            (params->scenario == TestScenario::TUNNEL_DIR_CHANGE &&
+             getpid() % 2 == 0)) {
             std::random_device rdev;
             std::mt19937 gen(rdev());
             std::uniform_int_distribution<int> dist(10, 20);
@@ -383,6 +393,8 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
             state.docked = false;
             state.bat_level = dist(gen);
             GetLogger().Debug(std::format("Bat: {:>3}%", state.bat_level));
+        } else if (params->scenario == TestScenario::SUICIDE_ORDER) {
+            state.bat_level = 2;
         }
 
         [[maybe_unused]] const auto signal_thread = Thread::Create(
