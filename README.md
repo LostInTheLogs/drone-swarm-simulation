@@ -52,13 +52,13 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 
 ## Dowodca
 
-- [ ] wysyła sygnały 1, 2 do operatora i 3 do drona.
+- [x] wysyła sygnały 1, 2 do operatora i 3 do drona.
 
 ## Operator
 
 - [x] co $T_k$ uzupełnia braki dronów (jeśli jest miejsce w bazie)
-- [ ] **sig1**: zwiększa maksymalną ilość dronów 2x
-- [ ] **sig2**: zmniejsza maksymalną ilość dronów 2x
+- [x] **sig1**: zwiększa maksymalną ilość dronów 2x
+- [x] **sig2**: zmniejsza maksymalną ilość dronów 2x
 
 ### Baza
 

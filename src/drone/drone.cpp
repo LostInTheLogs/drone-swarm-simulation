@@ -129,7 +129,8 @@ void Err(auto&& val) {
     }
 }
 
-constexpr auto WaitInQueue(DroneState& state, ProcQueue& queue, RWMutex& mut)
+constexpr auto WaitInQueue(DroneState& state, TunnelDir dir, ProcQueue& queue,
+                           RWMutex& mut)
     -> std::expected<void, std::monostate> {
     const auto pid = g_curr_process.GetPid();
     int not_pid = pid - 1;
@@ -138,7 +139,7 @@ constexpr auto WaitInQueue(DroneState& state, ProcQueue& queue, RWMutex& mut)
         return std::unexpected(std::monostate());
     }
     state.mutex.Lock();
-    queue.Push(pid, 100 - state.bat_level);
+    queue.Push(pid, (dir == TunnelDir::OUT ? 0 : 100 - state.bat_level));
     state.mutex.Unlock();
     mut.UnlockWrite();
 
@@ -203,7 +204,7 @@ constexpr auto EnterExitSequence(DroneState& state, BaseState& base,
                                  ProcQueue& queue, RWMutex& queue_mut,
                                  TunnelDir dir, Tunnel& tun1, Tunnel& tun2)
     -> std::expected<bool, std::monostate> {
-    if (!WaitInQueue(state, queue, queue_mut)) {
+    if (!WaitInQueue(state, dir, queue, queue_mut)) {
         return std::unexpected(std::monostate());
     }
 

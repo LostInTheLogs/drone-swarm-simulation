@@ -19,13 +19,18 @@ class Array {
         size_++;
     }
 
-    void Remove(T item) {
+    auto Find(T item) -> size_t {
         size_t found = 0;
         for (found = 0; found < size_; found++) {
             if (items_[found] == item) {
                 break;
             }
         }
+        return found;
+    }
+
+    void Remove(T item) {
+        const size_t found = Find(item);
 
         if (found == size_) {
             return;

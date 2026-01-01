@@ -38,20 +38,20 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
     using namespace std::chrono_literals;
 
     try {
+        SetupSignals();
         auto shm_params = ShmParameters::Get(ShmKey::PARAMS);
+        const auto drone_hi_cap = shm_params->init_drone_count * 2;
+        const auto drone_lo_cap = 1;
 
         const auto drones_arr_size =
-            ShmDrones::value_type::CalcSize(shm_params->init_drone_count);
+            ShmDrones::value_type::CalcSize(drone_hi_cap);
         auto sems = SemaphoreSet<SemIds>::Get(SemSetKey::MAIN);
 
         State state{
-            .curr_drone_cap = std::max(1, shm_params->init_drone_count / 2),
+            .curr_drone_cap = std::max(1, shm_params->init_drone_count),
             .drones = ShmDrones::Get(ShmKey::DRONES, drones_arr_size),
             .free_spots_base = Semaphore::Get(sems, SemIds::FREE_SPOTS_BASE),
             .mut = RWMutex::Get<RWMUT_SEMS(DRONES)>(sems)};
-
-        const auto drone_hi_cap = shm_params->init_drone_count * 2;
-        const auto drone_lo_cap = 1;
 
         state.free_spots_base.Set(shm_params->max_drones_at_base);
 
@@ -86,12 +86,6 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
                 }
             });
 
-        const auto spawn = [&state]() {
-            auto drone = Process::Create({"./drone"});
-            state.drones->Insert(drone.GetPid());
-            drone.Disown();
-        };
-
         while (true) {
             if (!state.mut.LockWrite()) {
                 break;
@@ -106,11 +100,13 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
             while (state.drones->Size() <
                    static_cast<size_t>(state.curr_drone_cap)) {
                 if (!state.free_spots_base.Wait(Retry::NEVER, IPC_NOWAIT)) {
-                    logger.Debug("base full");
                     break;
                 }
+
                 logger.Debug("Spawning new drone");
-                spawn();
+                auto drone = Process::Create({"./drone"});
+                state.drones->Insert(drone.GetPid());
+                drone.Disown();
             }
 
             state.mut.UnlockWrite();

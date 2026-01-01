@@ -5,6 +5,7 @@
 #include "queue.h"
 
 struct GlobalParameters {
+    pid_t operator_pid = 0;
     int init_drone_count = 5;
     int max_drones_at_base = 2;
     int ignore_suicide_bat_thr = 20;

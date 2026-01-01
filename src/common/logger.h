@@ -10,11 +10,12 @@
 
 class Logger {
   public:
-    enum LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
+    enum LogLevel : uint8_t { TRACE, DEBUG, INFO, WARNING, ERROR };
 
     static auto Create(std::string_view name) -> Logger;
 
     void Log(LogLevel level, std::string_view msg);
+    void Trace(std::string_view msg);
     void Debug(std::string_view msg);
     void Info(std::string_view msg);
     void Warning(std::string_view msg);

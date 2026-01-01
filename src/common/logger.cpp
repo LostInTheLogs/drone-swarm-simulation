@@ -47,6 +47,9 @@ void Logger::Log(LogLevel level, string_view msg) {
     }
 }
 
+void Logger::Trace(string_view msg) {
+    Logger::Log(LogLevel::TRACE, msg);
+}
 void Logger::Debug(string_view msg) {
     Logger::Log(LogLevel::DEBUG, msg);
 }
@@ -84,6 +87,7 @@ auto LogPrinter::FormatLog(Logger::Payload log) -> std::string {
 
 auto LogPrinter::LogLevelToColor(Logger::LogLevel level) -> std::string {
     switch (level) {
+        case Logger::TRACE:
         case Logger::DEBUG:
             return "\033[37m";
         case Logger::INFO:
@@ -98,6 +102,8 @@ auto LogPrinter::LogLevelToColor(Logger::LogLevel level) -> std::string {
 
 auto LogPrinter::LogLevelToStr(Logger::LogLevel level) -> std::string {
     switch (level) {
+        case Logger::TRACE:
+            return "\033[1;37mTRACE\033[0m";
         case Logger::DEBUG:
             return "\033[1;37mDEBUG\033[0m";
         case Logger::INFO:

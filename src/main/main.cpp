@@ -33,7 +33,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
             ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0666, queue_size);
 
         const auto drones_arr_size =
-            ShmDrones::value_type::CalcSize(shm_params->init_drone_count);
+            ShmDrones::value_type::CalcSize(shm_params->init_drone_count * 2UL);
         auto drones_arr =
             ShmDrones::Create(ShmKey::DRONES, 0666, drones_arr_size);
 
@@ -41,14 +41,14 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
 
         auto sems = SemaphoreSet<SemIds>::Create(SemSetKey::MAIN, 0666);
 
-        shm_params.Detach();
-
         auto logger_process = Process::CreateReady({"./logger"});
 
         auto operator_proc = Process::Create({"./operator"});
+        shm_params->operator_pid = operator_proc.GetPid();
+        shm_params.Detach();
         operator_proc.Wait();
 
-        auto slept = Thread::SleepFor(1000ms);
+        auto slept = Thread::SleepFor(200ms);
         logger_process.TermWait();
     } catch (std::exception& e) {
         LogPrinter::PrintError("main", e.what());
