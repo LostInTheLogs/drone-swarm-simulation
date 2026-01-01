@@ -30,9 +30,8 @@ class RWMutex {
         static_assert(SemInit<E>::Get()[static_cast<size_t>(A0)] == 0);
         static_assert(SemInit<E>::Get()[static_cast<size_t>(B1)] == 1);
         static_assert(SemInit<E>::Get()[static_cast<size_t>(C1)] == 1);
-        return {Mutex(Semaphore::Get(sems, A0)),
-                Mutex(Semaphore::Get(sems, B1)),
-                Mutex(Semaphore::Get(sems, C1))};
+        return {(Semaphore::Get(sems, A0)), Mutex(Semaphore::Get(sems, B1)),
+                (Semaphore::Get(sems, C1))};
     }
 
     RWMutex(RWMutex &&) = default;
@@ -49,8 +48,9 @@ class RWMutex {
     void UnlockWrite(Retry retry = Retry::UNTIL_TERM);
 
   private:
-    RWMutex(Mutex reader_count, Mutex reader_count_mut, Mutex writer_mut);
-    Mutex reader_count_;
+    RWMutex(Semaphore reader_count, Mutex reader_count_mut,
+            Semaphore writer_mut);
+    Semaphore reader_count_;
     Mutex reader_count_mut_;
-    Mutex writer_mut_;
+    Semaphore writer_sem_;
 };

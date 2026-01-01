@@ -1,6 +1,9 @@
 #include <unistd.h>
 
 #include <csignal>
+#include <span>
+#include <stdexcept>
+#include <string>
 
 #include "globals.h"
 #include "ipc/ipc.h"
@@ -20,10 +23,50 @@ auto Err(auto&& val) -> decltype(auto) {
 }
 }  // namespace
 
-auto main(int /*argc*/, char* /*argv*/[]) -> int {
+auto main(int argc, char* argv[]) -> int {
     using namespace std::chrono_literals;
     try {
+        std::span<char*> args(argv, argc);
+        if (args.size() > 2) {
+            throw std::runtime_error("Too many arguments!");
+        }
+
         auto shm_params = ShmParameters::Create(ShmKey::PARAMS, 0666);
+
+        if (args.size() == 2) {
+            auto scenario = std::stoi(argv[1]);
+            if (scenario < 0 || scenario >= TestScenario::COUNT) {
+                throw std::runtime_error("This test scenario does not exist!");
+            }
+            shm_params->scenario = static_cast<TestScenario>(scenario);
+        }
+
+        switch (shm_params->scenario) {
+            case INC_DEC_DRONE_COUNT:
+                shm_params->init_drone_count = 4;
+                shm_params->max_drones_at_base = 2;
+                shm_params->max_charges = 0;
+                shm_params->battery_lifetime = 500ms;
+                shm_params->tunnel_length = 1ms;
+                shm_params->tun_cap = 10;
+                break;
+            case PRIORITY_QUEUE:
+                shm_params->init_drone_count = 10;
+                shm_params->max_drones_at_base = 100;
+                shm_params->tun_cap = 1;
+                shm_params->tunnel_length = 200ms;
+                shm_params->battery_lifetime = 10s;
+                break;
+            case SUICIDE_ORDER:
+                break;
+            case DEAD_BAT_IN_TUNNEL:
+                break;
+            case TUNNEL_DIR_CHANGE:
+                break;
+            case NO_TEST:
+            case COUNT:
+                break;
+        }
 
         const auto queue_size =
             Queue<pid_t>::CalcSize(shm_params->init_drone_count);
@@ -42,6 +85,9 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
         auto sems = SemaphoreSet<SemIds>::Create(SemSetKey::MAIN, 0666);
 
         auto logger_process = Process::CreateReady({"./logger"});
+
+        auto logger = Logger::Create("operator");
+        shm_params->Print(logger);
 
         auto operator_proc = Process::Create({"./operator"});
         shm_params->operator_pid = operator_proc.GetPid();

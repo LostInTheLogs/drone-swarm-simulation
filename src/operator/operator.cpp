@@ -1,4 +1,5 @@
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -42,6 +43,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
         auto shm_params = ShmParameters::Get(ShmKey::PARAMS);
         const auto drone_hi_cap = shm_params->init_drone_count * 2;
         const auto drone_lo_cap = 1;
+        const auto scenario = shm_params->scenario;
 
         const auto drones_arr_size =
             ShmDrones::value_type::CalcSize(drone_hi_cap);
@@ -58,6 +60,17 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
         shm_params.Detach();
 
         auto logger = Logger::Create("operator");
+
+        const auto spawn_drone = [&]() {
+            if (!state.free_spots_base.Wait(Retry::NEVER, IPC_NOWAIT)) {
+                return false;
+            }
+            logger.Debug("Spawning new drone");
+            auto drone = Process::Create({"./drone"});
+            state.drones->Insert(drone.GetPid());
+            drone.Disown();
+            return true;
+        };
 
         [[maybe_unused]]
         auto signal_thread =
@@ -86,7 +99,91 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
                 }
             });
 
-        while (true) {
+        const auto scenario_inc_dec_drone_count = [&]() {
+            logger.Warning("Waiting for the drone count to stablilize...");
+            Err(Thread::SleepFor(100ms));
+            Err(state.mut.LockRead());
+            logger.Warning(
+                std::format("Drone count: {}", state.drones->Size()));
+            state.mut.UnlockRead();
+
+            for (int i = 0; i < 2; i++) {
+                logger.Warning("Increasing drone count");
+                g_curr_process.Signal(SIGUSR1);
+
+                logger.Warning("Waiting for the drone count to stablilize...");
+                Err(Thread::SleepFor(1000ms));
+                Err(state.mut.LockRead());
+                logger.Warning(
+                    std::format("Drone count: {}", state.drones->Size()));
+                state.mut.UnlockRead();
+                Err(Thread::SleepFor(200ms));
+                Err(state.mut.LockRead());
+                logger.Warning(
+                    std::format("Drone count: {}", state.drones->Size()));
+                state.mut.UnlockRead();
+            }
+
+            for (int i = 0; i < 4; i++) {
+                logger.Warning("Decreasing drone count");
+                g_curr_process.Signal(SIGUSR2);
+
+                logger.Warning("Waiting for the drone count to stablilize...");
+                Err(Thread::SleepFor(1000ms));
+                Err(state.mut.LockRead());
+                logger.Warning(
+                    std::format("Drone count: {}", state.drones->Size()));
+                state.mut.UnlockRead();
+                Err(Thread::SleepFor(200ms));
+                Err(state.mut.LockRead());
+                logger.Warning(
+                    std::format("Drone count: {}", state.drones->Size()));
+                state.mut.UnlockRead();
+            }
+
+            g_curr_process.Signal(SIGTERM);
+        };
+        const auto scenario_priority_queue = [&]() {
+            Err(Thread::SleepFor(500ms));
+            Err(state.mut.LockWrite());
+            state.curr_drone_cap = 0;
+            state.mut.UnlockWrite();
+            Err(Thread::SleepFor(2000ms));
+
+            g_curr_process.Signal(SIGTERM);
+        };
+        const auto scenario_suicide_order = []() {
+            //
+        };
+        const auto scenario_dead_bat_in_tunnel = []() {
+            //
+        };
+        const auto scenario_tunnel_dir_change = []() {
+            //
+        };
+
+        switch (scenario) {
+            case INC_DEC_DRONE_COUNT:
+                (void)Thread::Create(scenario_inc_dec_drone_count);
+                break;
+            case PRIORITY_QUEUE:
+                (void)Thread::Create(scenario_priority_queue);
+                break;
+            case SUICIDE_ORDER:
+                (void)Thread::Create(scenario_suicide_order);
+                break;
+            case DEAD_BAT_IN_TUNNEL:
+                (void)Thread::Create(scenario_dead_bat_in_tunnel);
+                break;
+            case TUNNEL_DIR_CHANGE:
+                (void)Thread::Create(scenario_tunnel_dir_change);
+                break;
+            case NO_TEST:
+            case COUNT:
+                break;
+        }
+
+        while (!CurrentProcess::TerminateReceived()) {
             if (!state.mut.LockWrite()) {
                 break;
             }
@@ -99,19 +196,14 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
 
             while (state.drones->Size() <
                    static_cast<size_t>(state.curr_drone_cap)) {
-                if (!state.free_spots_base.Wait(Retry::NEVER, IPC_NOWAIT)) {
+                if (!spawn_drone()) {
                     break;
                 }
-
-                logger.Debug("Spawning new drone");
-                auto drone = Process::Create({"./drone"});
-                state.drones->Insert(drone.GetPid());
-                drone.Disown();
             }
 
             state.mut.UnlockWrite();
 
-            if (!Thread::SleepFor(1s)) {
+            if (!Thread::SleepFor(50ms)) {
                 break;
             }
         }
@@ -119,7 +211,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
         Err(state.mut.LockWrite(Retry::ALWAYS));
         for (size_t i = 0; i < state.drones->Size(); i++) {
             auto drone = Process((*state.drones)[i]);
-            drone.Wait();
+            drone.TermWait();
         }
         state.drones->Clear();
         state.mut.UnlockWrite();

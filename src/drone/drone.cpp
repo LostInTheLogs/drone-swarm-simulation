@@ -1,4 +1,6 @@
+#include <format>
 #include <iostream>
+#include <random>
 
 #include "globals.h"
 #include "logger.h"
@@ -35,8 +37,6 @@ struct BaseState {
     Semaphore free_spots;
 };
 
-unsigned int g_tun_cap = 1;
-
 constexpr auto ShouldReturn(const GlobalParameters& params,
                             const DroneState& state) -> bool {
     return !state.docked && state.bat_level < params.low_bat_thr &&
@@ -69,7 +69,7 @@ constexpr void SignalThread(const GlobalParameters& params, DroneState& state) {
         sigwait(&sigset, &sig);
 
         state.mutex.Lock();
-        if (state.bat_level < params.ignore_suicide_bat_thr) {
+        if (state.bat_level < params.low_bat_thr) {
             GetLogger().Info("Suicide mission order ignored");
             state.mutex.Unlock();
             continue;
@@ -85,7 +85,7 @@ constexpr void SignalThread(const GlobalParameters& params, DroneState& state) {
 constexpr void BatteryThread(const GlobalParameters& params,
                              DroneState& state) {
     auto next = MonotonicClock::now();
-    const auto dur = 50ms;
+    auto dur = 0ms;
 
     while (!CurrentProcess::TerminateReceived()) {
         next += dur;
@@ -98,8 +98,10 @@ constexpr void BatteryThread(const GlobalParameters& params,
 
         state.mutex.Lock();
         if (state.docked) {
+            dur = params.battery_chargetime / 100;
             state.bat_level++;
         } else {
+            dur = params.battery_lifetime / 100;
             state.bat_level--;
         }
         auto clamped = std::clamp(state.bat_level, 0, 100);
@@ -120,6 +122,7 @@ constexpr void BatteryThread(const GlobalParameters& params,
         }
 
         state.mutex.Unlock();
+        state.changed.Broadcast();
     }
 }
 
@@ -129,44 +132,15 @@ void Err(auto&& val) {
     }
 }
 
-constexpr auto WaitInQueue(DroneState& state, TunnelDir dir, ProcQueue& queue,
-                           RWMutex& mut)
-    -> std::expected<void, std::monostate> {
-    const auto pid = g_curr_process.GetPid();
-    int not_pid = pid - 1;
-
-    if (!mut.LockWrite()) {
-        return std::unexpected(std::monostate());
-    }
-    state.mutex.Lock();
-    queue.Push(pid, (dir == TunnelDir::OUT ? 0 : 100 - state.bat_level));
-    state.mutex.Unlock();
-    mut.UnlockWrite();
-
-    Err(mut.LockRead(Retry::ALWAYS));
-    while (queue.Peek().value_or(not_pid) != pid) {
-        mut.UnlockRead();
-        if (!Thread::SleepFor(50ms) || CurrentProcess::TerminateReceived()) {
-            Err(mut.LockWrite(Retry::ALWAYS));
-            queue.Remove(pid);
-            mut.UnlockWrite();
-            return std::unexpected(std::monostate());
-        }
-        Err(mut.LockRead(Retry::ALWAYS));
-    }
-    mut.UnlockRead();
-
-    return {};
-};
-
-constexpr auto EnterOneTunnel(TunnelDir dir, Tunnel& tun)
+constexpr auto EnterOneTunnel(const GlobalParameters& params, TunnelDir dir,
+                              Tunnel& tun)
     -> std::expected<bool, std::monostate> {
     bool entered = false;
     if (!tun.mutex.Lock()) {
         return std::unexpected(std::monostate());
     }
     entered = tun.data->drones == 0 ||
-              (tun.data->dir == dir && tun.data->drones < g_tun_cap);
+              (tun.data->dir == dir && tun.data->drones < params.tun_cap);
     if (entered) {
         tun.data->dir = dir;
         tun.data->drones++;
@@ -175,58 +149,99 @@ constexpr auto EnterOneTunnel(TunnelDir dir, Tunnel& tun)
     return entered;
 }
 
-constexpr auto EnterTunnels(TunnelDir dir, Tunnel& tun1, Tunnel& tun2)
+constexpr auto WaitForTunInQueue(const GlobalParameters& params,
+                                 DroneState& state, BaseState& base,
+                                 TunnelDir dir, ProcQueue& queue, RWMutex& mut,
+                                 Tunnel& tun1, Tunnel& tun2)
     -> std::expected<std::reference_wrapper<Tunnel>, std::monostate> {
+    const auto pid = g_curr_process.GetPid();
+    int not_pid = pid - 1;
+
+    if (!mut.LockWrite()) {
+        return std::unexpected(std::monostate());
+    }
+    state.mutex.Lock();
+    const auto prio = (dir == TunnelDir::OUT ? 0 : 100 - state.bat_level);
+    GetLogger().Trace(std::format("Added to queue, priority {}", prio));
+    queue.Push(pid, prio);
+    state.mutex.Unlock();
+    mut.UnlockWrite();
+
+    const auto leave_queue = [&]() {
+        Err(mut.LockWrite(Retry::ALWAYS));
+        queue.Remove(pid);
+        mut.UnlockWrite();
+    };
+    const auto leave_tun = [&]() {
+        state.mutex.Lock();
+        if (state.at_base) {
+            base.free_spots.Signal(Retry::ALWAYS);
+            state.at_base = false;
+        }
+        state.mutex.Unlock();
+    };
+
+    Err(mut.LockRead(Retry::ALWAYS));
     while (true) {
-        auto entered = EnterOneTunnel(dir, tun1);
-        if (!entered) {
-            return std::unexpected(std::monostate());
-        }
-        if (*entered) {
-            return tun1;
+        if (queue.Peek().value_or(not_pid) == pid) {
+            bool can_go = true;
+            if (dir == TunnelDir::IN) {
+                if (base.free_spots.Wait(Retry::NEVER, IPC_NOWAIT)) {
+                    state.mutex.Lock();
+                    state.at_base = true;
+                    state.mutex.Unlock();
+                } else {
+                    can_go = false;
+                }
+            }
+            if (can_go) {
+                auto entered = EnterOneTunnel(params, dir, tun1);
+                if (!entered) {
+                    mut.UnlockRead();
+                    leave_queue();
+                    leave_tun();
+                    return std::unexpected(std::monostate());
+                }
+                if (*entered) {
+                    mut.UnlockRead();
+                    leave_queue();
+                    return tun1;
+                }
+
+                entered = EnterOneTunnel(params, dir, tun2);
+                if (!entered) {
+                    mut.UnlockRead();
+                    leave_queue();
+                    leave_tun();
+                    return std::unexpected(std::monostate());
+                }
+                if (*entered) {
+                    mut.UnlockRead();
+                    leave_queue();
+                    return tun2;
+                }
+
+                leave_tun();
+            }
         }
 
-        entered = EnterOneTunnel(dir, tun2);
-        if (!entered) {
+        mut.UnlockRead();
+        if (!Thread::SleepFor(50ms) || CurrentProcess::TerminateReceived()) {
+            leave_queue();
+            leave_tun();
             return std::unexpected(std::monostate());
         }
-        if (*entered) {
-            return tun2;
-        }
-
-        if (!Thread::SleepFor(50ms)) {
-            return std::unexpected(std::monostate());
-        }
+        Err(mut.LockRead(Retry::ALWAYS));
     }
 };
 
-constexpr auto EnterExitSequence(DroneState& state, BaseState& base,
+constexpr auto EnterExitSequence(const GlobalParameters& params,
+                                 DroneState& state, BaseState& base,
                                  ProcQueue& queue, RWMutex& queue_mut,
                                  TunnelDir dir, Tunnel& tun1, Tunnel& tun2)
     -> std::expected<bool, std::monostate> {
-    if (!WaitInQueue(state, dir, queue, queue_mut)) {
-        return std::unexpected(std::monostate());
-    }
-
-    if (dir == TunnelDir::IN) {
-        if (!base.free_spots.Wait()) {
-            Err(queue_mut.LockWrite(Retry::ALWAYS));
-            queue.Remove(g_curr_process.GetPid());
-            queue_mut.UnlockWrite();
-            return std::unexpected(std::monostate());
-        }
-        state.mutex.Lock();
-        state.at_base = true;
-        state.mutex.Unlock();
-    }
-
-    auto entered_tun = EnterTunnels(dir, tun1, tun2);
-
-    // leave the queue even if entering tunnel interruped
-    Err(queue_mut.LockWrite(Retry::ALWAYS));
-    queue.Remove(g_curr_process.GetPid());
-    queue_mut.UnlockWrite();
-
+    auto entered_tun = WaitForTunInQueue(params, state, base, dir, queue,
+                                         queue_mut, tun1, tun2);
     if (!entered_tun) {
         base.free_spots.Signal(Retry::ALWAYS);
         state.mutex.Lock();
@@ -235,6 +250,8 @@ constexpr auto EnterExitSequence(DroneState& state, BaseState& base,
         return std::unexpected(std::monostate());
     }
 
+    GetLogger().Trace("Left the queue");
+
     if (dir == TunnelDir::OUT) {
         state.mutex.Lock();
         state.docked = false;
@@ -242,7 +259,7 @@ constexpr auto EnterExitSequence(DroneState& state, BaseState& base,
         GetLogger().Info("Left the charging pad");
     }
 
-    auto slept = Thread::SleepFor(500ms);
+    auto slept = Thread::SleepFor(params.tunnel_length);
 
     // leave the tunnel even if sleep interruped
     auto& tun = (*entered_tun).get();
@@ -311,7 +328,7 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
             state.mutex.Unlock();
 
             GetLogger().Info("Leaving the base");
-            if (!EnterExitSequence(state, base, *out_queue, out_mut,
+            if (!EnterExitSequence(params, state, base, *out_queue, out_mut,
                                    TunnelDir::OUT, tunnel1, tunnel2)) {
                 return;
             }
@@ -324,7 +341,7 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
             state.mutex.Unlock();
 
             GetLogger().Info("Returning to the base");
-            if (!EnterExitSequence(state, base, *in_queue, in_mut,
+            if (!EnterExitSequence(params, state, base, *in_queue, in_mut,
                                    TunnelDir::IN, tunnel2, tunnel1)) {
                 return;
             }
@@ -357,6 +374,16 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
 
         auto params = ShmParameters::Get(ShmKey::PARAMS);
         DroneState state;
+
+        if (params->scenario == TestScenario::PRIORITY_QUEUE) {
+            std::random_device rdev;
+            std::mt19937 gen(rdev());
+            std::uniform_int_distribution<int> dist(10, 20);
+            state.at_base = false;
+            state.docked = false;
+            state.bat_level = dist(gen);
+            GetLogger().Debug(std::format("Bat: {:>3}%", state.bat_level));
+        }
 
         [[maybe_unused]] const auto signal_thread = Thread::Create(
             [&state, &params]() { SignalThread(*params, state); });

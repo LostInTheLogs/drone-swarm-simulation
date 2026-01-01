@@ -102,7 +102,7 @@ class Queue {
             const auto parent_i = Parent(node_i);
             const auto parent = heap_[parent_i];
             const auto node = heap_[node_i];
-            if (parent < node) {
+            if (parent >= node) {
                 return;
             }
 
@@ -116,12 +116,12 @@ class Queue {
             auto max = node;
 
             const auto left = Left(node);
-            if (left < size_ && left > max) {
+            if (left < size_ && heap_[left] > heap_[max]) {
                 max = left;
             }
 
             const auto right = Right(node);
-            if (right < size_ && right > max) {
+            if (right < size_ && heap_[right] > heap_[max]) {
                 max = right;
             }
 

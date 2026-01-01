@@ -27,10 +27,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
         CurrentProcess::SignalReady();
 
         LogPrinter::Print("logger", Logger::LogLevel::INFO, "Listening...");
-        auto success = log_printer.ReceiveForever();
-        if (!HandleExpectedError(success)) {
-            return 1;
-        }
+        log_printer.ReceiveForever();
 
     } catch (std::exception& e) {
         LogPrinter::PrintError("logger", e.what());

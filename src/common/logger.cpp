@@ -1,11 +1,14 @@
 #include "logger.h"
 
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <algorithm>
 #include <chrono>
+#include <csignal>
 #include <format>
 #include <iostream>
+#include <iterator>
 #include <utility>
 
 using std::expected, std::unexpected, std::string_view;
@@ -66,19 +69,19 @@ void Logger::Error(string_view msg) {
 LogPrinter::LogPrinter(IpcMessageQueue queue) : queue_(std::move(queue)) {}
 
 auto LogPrinter::Create() -> LogPrinter {
-    static auto queue = IpcMessageQueue::Create(MsgQueueKey::MAIN, 0666);
+    static auto queue = IpcMessageQueue::Create(MsgQueueKey::MAIN, 0600);
     return LogPrinter(std::move(queue));
 }
 
-auto LogPrinter::FormatLog(Logger::Payload log) -> std::string {
-    string_view msg(log.msg);
-    string_view sender(log.sender_name);
-    const auto level = LogLevelToStr(log.level);
+auto LogPrinter::FormatLog(Logger::Payload log, bool colored) -> std::string {
+    string_view msg(log.msg.data());
+    string_view sender(log.sender_name.data());
+    const auto level = LogLevelToStr(log.level, colored);
     const auto local_time =
         std::chrono::zoned_time(std::chrono::current_zone(), log.time);
-    const auto color = LogLevelToColor(log.level);
+    const auto color = colored ? LogLevelToColor(log.level) : "";
 
-    const auto* const clear_color = "\033[0m";
+    const auto* const clear_color = colored ? "\033[0m" : "";
     const auto col_msg = format("{}{}{}", color, msg, clear_color);
 
     return format("[{:%F %T}] {:>5} {}({}): {}\n", local_time, level, sender,
@@ -100,36 +103,65 @@ auto LogPrinter::LogLevelToColor(Logger::LogLevel level) -> std::string {
     return {};
 }
 
-auto LogPrinter::LogLevelToStr(Logger::LogLevel level) -> std::string {
+auto LogPrinter::LogLevelToStr(Logger::LogLevel level, bool colored)
+    -> std::string {
+    if (colored) {
+        switch (level) {
+            case Logger::TRACE:
+                return "\033[1;37mTRACE\033[0m";
+            case Logger::DEBUG:
+                return "\033[1;37mDEBUG\033[0m";
+            case Logger::INFO:
+                return "\033[1;36mINFO \033[0m";
+            case Logger::WARNING:
+                return "\033[1;33mWARN \033[0m";
+            case Logger::ERROR:
+                return "\033[1;31mERROR\033[0m";
+        }
+    }
     switch (level) {
         case Logger::TRACE:
-            return "\033[1;37mTRACE\033[0m";
+            return "TRACE";
         case Logger::DEBUG:
-            return "\033[1;37mDEBUG\033[0m";
+            return "DEBUG";
         case Logger::INFO:
-            return "\033[1;36mINFO \033[0m";
+            return "INFO ";
         case Logger::WARNING:
-            return "\033[1;33mWARN \033[0m";
+            return "WARN ";
         case Logger::ERROR:
-            return "\033[1;31mERROR\033[0m";
+            return "ERROR";
     }
     return {};
 }
 
-auto LogPrinter::ReceiveForever() -> expected<void, IpcError> {
+void LogPrinter::ReceiveForever() {
+    const auto file = open("./logs.txt", O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    if (file == -1) {
+        throw std::system_error(errno, std::generic_category());
+    }
+
     while (true) {
         auto message = queue_.Receive<Logger::Payload>(MessageTypeId::LOGGER);
         if (!message) {
             if (message.error().code() == std::errc::interrupted) {
-                return {};
+                if (-1 == close(file)) {
+                    throw std::system_error(errno, std::generic_category());
+                }
+                return;
             }
-            return unexpected(message.error());
+            throw IpcError(message.error());
         }
-        const auto formatted = FormatLog(*message);
-        std::cout << formatted;
-    }
+        const auto formatted_col = FormatLog(*message);
+        std::cout << formatted_col;
 
-    return {};
+        const auto formatted = FormatLog(*message, false);
+        if (-1 == write(file, formatted.c_str(), formatted.length())) {
+            if (-1 == close(file)) {
+                perror("Couldn't close file when write() failed");
+            }
+            throw std::system_error(errno, std::generic_category());
+        }
+    }
 }
 
 void LogPrinter::PrintError(std::string_view sender, std::string_view msg) {

@@ -14,19 +14,20 @@ auto Mutex::GetVal() const -> int {
     return sem_.GetVal();
 }
 
-RWMutex::RWMutex(Mutex reader_count, Mutex reader_count_mut, Mutex writer_mut)
+RWMutex::RWMutex(Semaphore reader_count, Mutex reader_count_mut,
+                 Semaphore writer_mut)
     : reader_count_(reader_count),
       reader_count_mut_(reader_count_mut),
-      writer_mut_(writer_mut) {}
+      writer_sem_(writer_mut) {}
 
 auto RWMutex::LockRead(Retry retry) -> std::expected<void, IpcError> {
     if (auto success = reader_count_mut_.Lock(retry); !success) {
         return success;
     }
 
-    reader_count_.Unlock(retry);
+    reader_count_.Signal(retry, SEM_UNDO);
     if (reader_count_.GetVal() == 1) {
-        if (auto success = writer_mut_.Lock(retry); !success) {
+        if (auto success = writer_sem_.Wait(retry); !success) {
             return success;
         }
     }
@@ -40,19 +41,19 @@ void RWMutex::UnlockRead(Retry retry) {
         throw IpcError(success.error());
     }
 
-    if (auto success = reader_count_.Lock(retry); !success) {
+    if (auto success = reader_count_.Wait(retry, SEM_UNDO); !success) {
         throw IpcError(success.error());
     }
     if (reader_count_.GetVal() == 0) {
-        writer_mut_.Unlock(retry);
+        writer_sem_.Signal(retry);
     }
 
     reader_count_mut_.Unlock(retry);
 }
 
 auto RWMutex::LockWrite(Retry retry) -> std::expected<void, IpcError> {
-    return writer_mut_.Lock(retry);
+    return writer_sem_.Wait(retry, SEM_UNDO);
 }
 void RWMutex::UnlockWrite(Retry retry) {
-    writer_mut_.Unlock(retry);
+    writer_sem_.Signal(retry, SEM_UNDO);
 }
