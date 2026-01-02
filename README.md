@@ -47,29 +47,47 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 
 ## src/main (./DroneSwarm)
 
-- tworzy potrzebne ipc
+- tworzy (i na końcu usuwa) potrzebne struktury ipc
 - startuje `loggera` i `operatora`
 
 ## src/logger
 
-- tworzy kolejke komunikatów
+- tworzy (i na końcu usuwa) kolejke komunikatów
 - czeka na komunikaty, wypisuje je na stdout i do pliku.
 
 ## src/operator
 
-- uzupełnia braki dronów
-- **sig1**: zwiększa maksymalną ilość dronów 2x
-- **sig2**: zmniejsza maksymalną ilość dronów 2x
+- uzupełnia braki dronów co 50ms (jeśli w bazie jest wolne miejsce)
+- **sig1**: zwiększa maksymalną ilość dronów 2x aż do $2N$
+- **sig2**: zmniejsza maksymalną ilość dronów 2x aż do $1$
 
 ## src/drone
 
 - startuje w bazie
-- po ładowaniu bateri $T_1$ opuszcza bazę
-- maksymalny czas lotu $T_2$
-- powrót do bazy przy baterii < 20%
-- zniszczenie przy baterii = 0%
+- po ładowaniu bateri ($T_1$) opuszcza bazę
+- bateria wystarcza na ($T_2$) czasu
+- powraca do bazy przy baterii < 20%
+- samobójstwo przy baterii = 0%
 - po $X_i$ ładowaniach utilizacja
-- **sig3**: samobójstwo (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%
+- **sig3**: atak samobójczy (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%, dron wylatuje i leci aż straci baterię
+
+## Działanie wejść:
+
+Wejścia mają miejsce tylko na x dronów, i przejscie przez nie trwa y czasu.
+
+Wchodzenie/wychodzenie z bazy wygląda tak:
+
+1. dron ustawia się w kolejce z priorytetem (100-poziom_baterii)
+2. co 50ms:
+    - sprawdza czy jest pierwszy w kolejce, jeśli nie, to dalej czeka
+    - sprawdza czy w bazie jest miejsce (wait z IPC_NOWAIT na semaforze)
+    - sprawdzia czy wejście 1 lub 2 jest wolne i ma jego kierunek (lub jest puste)
+    - jeśli któreś wejście jest dostępne, to do niego wchodzi i wychodzi z kolejki
+    - jeśli nie, to zwalnia miejsce w bazie (signal na semaforze)
+    - w przypadku błędu wychodzi z kolejki, tunelu i zwalnia miejsce w bazie
+3. czeka aż wyjdzie z tunelu (sleep y) zwalnia zajęte miejsce w tunelu
+
+wolne miejsca w bazie to semafor, a wolne miejsca i kierunek wejścia są w shared mem.
 
 # Testy
 
