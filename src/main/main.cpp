@@ -31,7 +31,7 @@ auto main(int argc, char* argv[]) -> int {
             throw std::runtime_error("Too many arguments!");
         }
 
-        auto shm_params = ShmParameters::Create(ShmKey::PARAMS, 0666);
+        auto shm_params = ShmParameters::Create(ShmKey::PARAMS, 0600);
 
         if (args.size() == 2) {
             auto scenario = std::stoi(argv[1]);
@@ -83,18 +83,18 @@ auto main(int argc, char* argv[]) -> int {
         const auto queue_size =
             Queue<pid_t>::CalcSize(shm_params->init_drone_count);
         auto in_queue =
-            ShmProcQueue::Create(ShmKey::IN_QUEUE, 0666, queue_size);
+            ShmProcQueue::Create(ShmKey::IN_QUEUE, 0600, queue_size);
         auto out_queue =
-            ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0666, queue_size);
+            ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0600, queue_size);
 
         const auto drones_arr_size =
             ShmDrones::value_type::CalcSize(shm_params->init_drone_count * 2UL);
         auto drones_arr =
-            ShmDrones::Create(ShmKey::DRONES, 0666, drones_arr_size);
+            ShmDrones::Create(ShmKey::DRONES, 0600, drones_arr_size);
 
-        auto base = ShmBaseData::Create(ShmKey::BASE_DATA, 0666);
+        auto base = ShmBaseData::Create(ShmKey::BASE_DATA, 0600);
 
-        auto sems = SemaphoreSet<SemIds>::Create(SemSetKey::MAIN, 0666);
+        auto sems = SemaphoreSet<SemIds>::Create(SemSetKey::MAIN, 0600);
 
         auto logger_process = Process::CreateReady({"./logger"});
 

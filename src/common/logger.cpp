@@ -135,7 +135,7 @@ auto LogPrinter::LogLevelToStr(Logger::LogLevel level, bool colored)
 }
 
 void LogPrinter::ReceiveForever() {
-    const auto file = open("./logs.txt", O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    const auto file = open("./logs.txt", O_CREAT | O_WRONLY | O_TRUNC, 0600);
     if (file == -1) {
         throw std::system_error(errno, std::generic_category());
     }

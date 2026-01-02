@@ -1,6 +1,6 @@
 # Github
 
-https://github.com/LostInTheLogs/drone-swarm-simulation
+[LostInTheLogs/drone-swarm-simulation](https://github.com/LostInTheLogs/drone-swarm-simulation)
 
 # Opis zadania
 
@@ -38,6 +38,38 @@ Napisz program dowódcy systemu, operatora i dronów tak, aby zasymulować cykl
 po pewnym określonym czasie $X_i$, liczonym w ilościach ładowań (pobytów w
 bazie).
 Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
+
+# Opis kodu
+
+## src/common
+
+- kod wspólny dla wszystkich programów
+
+## src/main (./DroneSwarm)
+
+- tworzy potrzebne ipc
+- startuje `loggera` i `operatora`
+
+## src/logger
+
+- tworzy kolejke komunikatów
+- czeka na komunikaty, wypisuje je na stdout i do pliku.
+
+## src/operator
+
+- uzupełnia braki dronów
+- **sig1**: zwiększa maksymalną ilość dronów 2x
+- **sig2**: zmniejsza maksymalną ilość dronów 2x
+
+## src/drone
+
+- startuje w bazie
+- po ładowaniu bateri $T_1$ opuszcza bazę
+- maksymalny czas lotu $T_2$
+- powrót do bazy przy baterii < 20%
+- zniszczenie przy baterii = 0%
+- po $X_i$ ładowaniach utilizacja
+- **sig3**: samobójstwo (nawet w trakcie ładowania), ignorowany jeśli bateria < 20%
 
 # Testy
 
@@ -210,3 +242,68 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 [2026-01-01 23:15:21.890974296] INFO  drone(1061096): Returning to the base
 [2026-01-01 23:15:21.941126300] TRACE drone(1061096): Entering tun 1 dir: in
 ```
+
+# Linki do funkcji
+
+## Tworzenie i obsługa plików
+
+open(), write(), close():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/logger.cpp#L137-L165>
+
+## Tworzenie procesów
+
+fork():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/process.cpp#L40-L50>
+
+exec:
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/process.cpp#L113-L122>
+
+## Tworzenie i obsługa wątków
+
+pthread_create():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/thread.cpp#L5-L25>
+
+pthread_join():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/thread.cpp#L27-L32>
+
+pthread_cancel():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/thread.cpp#L34-L39>
+
+pthread_mutex_lock(), pthread_mutex_unlock():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/thread_utils.cpp#L5-L10>
+
+pthread_cond_broadcast(), pthread_cond_wait():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/thread_utils.cpp#L12-L17>
+
+## Łącza nazwane i nienazwane
+
+fork() z pipe():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/process.cpp#L57-L78>
+
+## Segmenty pamięci dzielonej
+
+shmget():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/ipc/shared_memory.h#L104-L112>
+
+shmdt():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/ipc/shared_memory.h#L80-L85>
+
+shmat():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/ipc/shared_memory.h#L72-L78>
+
+shmctl():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/ipc/shared_memory.h#L64-L70>
+
+## Kolejki komunikatów
+
+msgget():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/ipc/msg_queue.cpp#L47-L55>
+
+msgctl():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/ipc/msg_queue.cpp#L57-L67>
+
+msgsnd():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/ipc/msg_queue.h#L35-L62>
+
+msgrcv():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/ipc/msg_queue.h#L64-L92>
