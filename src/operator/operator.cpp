@@ -156,26 +156,30 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
             Err(state.mut.LockWrite());
             state.curr_drone_cap = 2;
             state.mut.UnlockWrite();
-            Err(Thread::SleepFor(200ms));
+            Err(Thread::SleepFor(100ms));
             Err(state.mut.LockRead());
+            logger.Warning("Sending suicide order");
             Process((*state.drones)[0]).Signal(SIGUSR1);
             state.mut.UnlockRead();
 
             Err(Thread::SleepFor(200ms));
 
             Err(state.mut.LockRead());
+            logger.Warning("Sending suicide order");
             Process((*state.drones)[1]).Signal(SIGUSR1);
             state.mut.UnlockRead();
 
-            Err(Thread::SleepFor(1300ms));
+            Err(Thread::SleepFor(800ms));
 
             Err(state.mut.LockRead());
+            logger.Warning("Sending suicide order");
             Process((*state.drones)[0]).Signal(SIGUSR1);
             state.mut.UnlockRead();
 
-            Err(Thread::SleepFor(200ms));
+            Err(Thread::SleepFor(350ms));
 
             Err(state.mut.LockRead());
+            logger.Warning("Sending suicide order");
             Process((*state.drones)[0]).Signal(SIGUSR1);
             state.mut.UnlockRead();
 

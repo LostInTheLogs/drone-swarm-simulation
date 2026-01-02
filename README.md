@@ -75,6 +75,10 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 
 ## 1. Zwiększanie/zmniejszanie dynamiczne maksymalnej liczby dronów
 
+Sprawdamy, czy operator poprawnie zwieksza i zmniejsza maksymalną liczbe dronów.
+
+Symulacja startuje z 4 dronami:
+
 ```
 [2026-01-01 18:01:07.925495028] DEBUG operator(994731): GlobalParameters:
 [2026-01-01 18:01:07.925503199] DEBUG operator(994731):   scenario = 1
@@ -85,36 +89,61 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 [2026-01-01 18:01:07.925527923] DEBUG operator(994731):   T1=battery_chargetime = 500 ms
 [2026-01-01 18:01:07.925532323] DEBUG operator(994731):   tunnel_length = 1 ms
 [2026-01-01 18:01:07.925537491] DEBUG operator(994731):   tun_cap = 10
-[2026-01-01 18:01:07.928010297] DEBUG operator(994733): Spawning new drone
 [2026-01-01 18:01:07.928059046] WARN  operator(994733): Waiting for the drone count to stablilize...
 [2026-01-01 18:01:08.028220520] WARN  operator(994733): Drone count: 4
+```
+
+Zwiększamy ilość dronów do 8 (sig1)
+
+```
 [2026-01-01 18:01:08.028239377] WARN  operator(994733): Increasing drone count
 [2026-01-01 18:01:08.028255720] WARN  operator(994733): Waiting for the drone count to stablilize...
 [2026-01-01 18:01:09.028362929] WARN  operator(994733): Drone count: 8
-[2026-01-01 18:01:09.228495000] WARN  operator(994733): Drone count: 8
+```
+
+Zwiększamy ilość dronów, tym razem nie powinna się zwiększyć
+
+```
 [2026-01-01 18:01:09.228510854] WARN  operator(994733): Increasing drone count
 [2026-01-01 18:01:09.228522099] WARN  operator(994733): Waiting for the drone count to stablilize...
 [2026-01-01 18:01:10.228679594] WARN  operator(994733): Drone count: 8
-[2026-01-01 18:01:10.428801468] WARN  operator(994733): Drone count: 8
+```
+
+Zmienjszamy ilość dronów do 4 (sig1)
+
+```
 [2026-01-01 18:01:10.428812922] WARN  operator(994733): Decreasing drone count
 [2026-01-01 18:01:10.428820884] WARN  operator(994733): Waiting for the drone count to stablilize...
 [2026-01-01 18:01:11.428908609] WARN  operator(994733): Drone count: 4
-[2026-01-01 18:01:11.629005899] WARN  operator(994733): Drone count: 4
+```
+
+Zmienjszamy ilość dronów do 2 (sig1)
+
+```
 [2026-01-01 18:01:11.629030762] WARN  operator(994733): Decreasing drone count
 [2026-01-01 18:01:11.629044032] WARN  operator(994733): Waiting for the drone count to stablilize...
 [2026-01-01 18:01:12.629176805] WARN  operator(994733): Drone count: 2
-[2026-01-01 18:01:12.829361536] WARN  operator(994733): Drone count: 2
+```
+
+Zmienjszamy ilość dronów do 1 (sig1)
+
+```
 [2026-01-01 18:01:12.829382978] WARN  operator(994733): Decreasing drone count
 [2026-01-01 18:01:12.829396736] WARN  operator(994733): Waiting for the drone count to stablilize...
 [2026-01-01 18:01:13.830102279] WARN  operator(994733): Drone count: 1
-[2026-01-01 18:01:14.030277023] WARN  operator(994733): Drone count: 1
+```
+
+Zmienjszamy ilość dronów, tym razem nie powinna się zmienszyć
+
+```
 [2026-01-01 18:01:14.030297976] WARN  operator(994733): Decreasing drone count
 [2026-01-01 18:01:14.030308522] WARN  operator(994733): Waiting for the drone count to stablilize...
 [2026-01-01 18:01:15.030436686] WARN  operator(994733): Drone count: 1
-[2026-01-01 18:01:15.230569106] WARN  operator(994733): Drone count: 1
 ```
 
 ## 2. Dron z niższym poziomem baterii ma pierwszeństwo w kolejce
+
+Symulacja startuje z 10 dronami z losowo niską bateria poza bazą. Maksymalna liczba dronów w wejściach: 1.
 
 ```
 [2026-01-01 19:40:17.015630845] DEBUG operator(1017166): GlobalParameters:
@@ -126,24 +155,50 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 [2026-01-01 19:40:17.015662134] DEBUG operator(1017166):   T1=battery_chargetime = 10000 ms
 [2026-01-01 19:40:17.015665975] DEBUG operator(1017166):   tunnel_length = 200 ms
 [2026-01-01 19:40:17.015670235] DEBUG operator(1017166):   tun_cap = 1
+```
+
+Pierwsze dwa drony od razu wychodzą z kolejki, bo wejścia są puste:
+
+```
 [2026-01-01 19:40:17.019857648] TRACE drone(1017173): Added to queue, priority 85
 [2026-01-01 19:40:17.019878391] TRACE drone(1017173): Left the queue
 [2026-01-01 19:40:17.020225643] TRACE drone(1017175): Added to queue, priority 84
 [2026-01-01 19:40:17.020246176] TRACE drone(1017175): Left the queue
+```
+
+Następne drony czekają ąż wejśćia będą puste:
+
+```
 [2026-01-01 19:40:17.020303516] TRACE drone(1017172): Added to queue, priority 84
-[2026-01-01 19:40:17.020359320] TRACE drone(1017174): Added to queue, priority 87
-[2026-01-01 19:40:17.020405485] TRACE drone(1017171): Added to queue, priority 89
+[2026-01-01 19:40:17.020359320] TRACE drone(1017174): Added to queue, priority 87 (2)
+[2026-01-01 19:40:17.020405485] TRACE drone(1017171): Added to queue, priority 89 (1)
 [2026-01-01 19:40:17.020458285] TRACE drone(1017176): Added to queue, priority 87
 [2026-01-01 19:40:17.020512621] TRACE drone(1017177): Added to queue, priority 82
 [2026-01-01 19:40:17.020742609] TRACE drone(1017178): Added to queue, priority 83
 [2026-01-01 19:40:17.020919238] TRACE drone(1017179): Added to queue, priority 85
 [2026-01-01 19:40:17.021241207] TRACE drone(1017180): Added to queue, priority 85
+
+```
+
+Dwa drony z najniższą baterią (1,2) wychodzą z kolejki:
+
+```
 [2026-01-01 19:40:17.220825193] TRACE drone(1017171): Left the queue
 [2026-01-01 19:40:17.270870563] TRACE drone(1017174): Left the queue
-[2026-01-01 19:40:17.271939487] TRACE drone(1017218): Added to queue, priority 89
-[2026-01-01 19:40:17.271973150] TRACE drone(1017219): Added to queue, priority 90
+```
+
+Dwa drony z najniższą baterią (3,4) wychodzą z kolejki:
+
+```
+[2026-01-01 19:40:17.271939487] TRACE drone(1017218): Added to queue, priority 89 (4)
+[2026-01-01 19:40:17.271973150] TRACE drone(1017219): Added to queue, priority 90 (3)
 [2026-01-01 19:40:17.422255997] TRACE drone(1017219): Left the queue
 [2026-01-01 19:40:17.472333703] TRACE drone(1017218): Left the queue
+```
+
+Następne drony poprawnie wychodzą z kolejki:
+
+```
 [2026-01-01 19:40:17.472757920] TRACE drone(1017233): Added to queue, priority 85
 [2026-01-01 19:40:17.671603682] TRACE drone(1017176): Left the queue
 [2026-01-01 19:40:17.722107701] TRACE drone(1017179): Left the queue
@@ -156,38 +211,46 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 
 ## 3. Dron poprawnie dostaje polecenie ataku samobójczego w locie i w bazie
 
+Symulacja startuje z dwoma dronami z niską baterią w bazie:
+
 ```
-[2026-01-01 20:35:15.269268701] DEBUG operator(1036231): GlobalParameters:
-[2026-01-01 20:35:15.269273939] DEBUG operator(1036231):   scenario = 3
-[2026-01-01 20:35:15.269276803] DEBUG operator(1036231):   N=init_drone_count = 2
-[2026-01-01 20:35:15.269279597] DEBUG operator(1036231):   P=max_drones_at_base = 2
-[2026-01-01 20:35:15.269281901] DEBUG operator(1036231):   Xi=max_charges = 0
-[2026-01-01 20:35:15.269285254] DEBUG operator(1036231):   T2=battery_lifetime = 800 ms
-[2026-01-01 20:35:15.269288117] DEBUG operator(1036231):   T1=battery_chargetime = 800 ms
-[2026-01-01 20:35:15.269290492] DEBUG operator(1036231):   tunnel_length = 200 ms
-[2026-01-01 20:35:15.269293355] DEBUG operator(1036231):   tun_cap = 2
+[2026-01-02 16:00:06.003259578] DEBUG operator(44566): GlobalParameters:
+[2026-01-02 16:00:06.003266430] DEBUG operator(44566):   scenario = 3
+[2026-01-02 16:00:06.003269717] DEBUG operator(44566):   N=init_drone_count = 2
+[2026-01-02 16:00:06.003272302] DEBUG operator(44566):   P=max_drones_at_base = 2
+[2026-01-02 16:00:06.003275157] DEBUG operator(44566):   Xi=max_charges = 0
+[2026-01-02 16:00:06.003278623] DEBUG operator(44566):   T2=battery_lifetime = 800 ms
+[2026-01-02 16:00:06.003281238] DEBUG operator(44566):   T1=battery_chargetime = 800 ms
+[2026-01-02 16:00:06.003283823] DEBUG operator(44566):   tunnel_length = 200 ms
+[2026-01-02 16:00:06.003287049] DEBUG operator(44566):   tun_cap = 2
+```
 
-[2026-01-01 20:35:15.324226432] INFO  drone(1036236): Hello world
-[2026-01-01 20:35:15.394438160] DEBUG drone(1036236): Bat:  10%
-[2026-01-01 20:35:15.471277490] INFO  drone(1036236): Suicide mission order ignored
-[2026-01-01 20:35:16.294437925] DEBUG drone(1036236): Bat: 100%
-[2026-01-01 20:35:16.294468445] INFO  drone(1036236): Leaving the base
-[2026-01-01 20:35:16.936413071] DEBUG drone(1036236): Bat:  20%
-[2026-01-01 20:35:16.971560630] INFO  drone(1036236): Suicide mission order ignored
+Dron w bazie z bat <20% poprawnie ignoruje polecenie, i dron w bazie z bat >20% poprawnie akceptuje polecenie
 
-[2026-01-01 20:35:15.324287334] INFO  drone(1036237): Hello world
-[2026-01-01 20:35:15.594524075] DEBUG drone(1036237): Bat:  30%
-[2026-01-01 20:35:15.671377513] INFO  drone(1036237): Suicide mission order accepted
+```
+[2026-01-02 16:00:06.085923083] DEBUG drone(44571): Bat:  10%
+[2026-01-02 16:00:06.105763546] INFO  drone(44571): Suicide mission order ignored
 
-[2026-01-01 20:35:15.975514864] INFO  drone(1036276): Hello world
-[2026-01-01 20:35:16.945678026] DEBUG drone(1036276): Bat: 100%
-[2026-01-01 20:35:16.945699467] INFO  drone(1036276): Leaving the base
-[2026-01-01 20:35:17.107675428] DEBUG drone(1036276): Bat:  80%
-[2026-01-01 20:35:17.145826867] INFO  drone(1036276): Left the base
-[2026-01-01 20:35:17.171644939] INFO  drone(1036276): Suicide mission order accepted
+[2026-01-02 16:00:06.285858298] DEBUG drone(44572): Bat:  60%
+[2026-01-02 16:00:06.305873228] INFO  drone(44572): Suicide mission order accepted
+```
+
+Dron w locie z bat <20% poprawnie ignoruje polecenie, i dron w locie z bat >20% poprawnie akceptuje polecenie
+
+```
+[2026-01-02 16:00:06.646063571] INFO  drone(44571): Left the base
+[2026-01-02 16:00:07.081918238] DEBUG drone(44571): Bat:  20%
+[2026-01-02 16:00:07.089927489] INFO  drone(44571): Returning to the base
+[2026-01-02 16:00:07.105943575] INFO  drone(44571): Suicide mission order ignored
+
+[2026-01-02 16:00:07.814358067] INFO  drone(45417): Left the base
+[2026-01-02 16:00:07.814962612] DEBUG drone(45420): Bat:  50%
+[2026-01-02 16:00:07.821908776] INFO  drone(45417): Suicide mission order accepted
 ```
 
 ## 4. Dron z rozładowaną beterią w wejściu do bazy nie blokuje wejscia
+
+Symulacja startuje z dronami z niską baterią poza bazą. Maksymalna liczba dronów w wejściach: 1.
 
 ```
 [2026-01-01 23:03:40.628199365] DEBUG operator(1058101): GlobalParameters:
@@ -199,19 +262,31 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 [2026-01-01 23:03:40.628232191] DEBUG operator(1058101):   T1=battery_chargetime = 2000 ms
 [2026-01-01 23:03:40.628236521] DEBUG operator(1058101):   tunnel_length = 200 ms
 [2026-01-01 23:03:40.628240432] DEBUG operator(1058101):   tun_cap = 1
+```
 
+Dwa drony tracą energię w wejściu do bazy:
+
+```
 [2026-01-01 23:03:40.833988668] TRACE drone(1058115): Left the queue
 [2026-01-01 23:03:40.913757219] WARN  drone(1058115): Battery died!
 
 [2026-01-01 23:03:40.834418195] TRACE drone(1058119): Left the queue
 [2026-01-01 23:03:40.914081983] WARN  drone(1058119): Battery died!
+```
 
+Kolejny dron poprawnie wraca do bazy, czyli wejścia nie są zablokowane:
+
+```
 [2026-01-01 23:03:40.935791518] TRACE drone(1058160): Left the queue
 [2026-01-01 23:03:41.135868814] INFO  drone(1058160): Back on the charging pad
 [2026-01-01 23:03:41.135875449] INFO  drone(1058160): Back at the base
 ```
 
 ## 5. Wejścia poprawnie zmieniaja kierunek
+
+Maksymalna liczba dronów w wejściach: 1.
+Symulacja startuje z dronami z pełną baterią w bazie i losowo z niską baterią poza bazą.
+Czyli te drony od razu zechcą przejśc przez wejścia.
 
 ```
 [2026-01-01 23:15:21.734168749] DEBUG operator(1061076): GlobalParameters:
@@ -223,22 +298,37 @@ Raport z przebiegu symulacji zapisać w pliku (plikach tekstowych).
 [2026-01-01 23:15:21.734194031] DEBUG operator(1061076):   T1=battery_chargetime = 1000 ms
 [2026-01-01 23:15:21.734197314] DEBUG operator(1061076):   tunnel_length = 200 ms
 [2026-01-01 23:15:21.734200596] DEBUG operator(1061076):   tun_cap = 1
+```
 
+Pierwszy dron wychodzi z bazy, zajmuje wejście 1:
+
+```
 [2026-01-01 23:15:21.739134802] INFO  drone(1061081): Leaving the base
 [2026-01-01 23:15:21.739143043] TRACE drone(1061081): Added to queue, priority 0
 [2026-01-01 23:15:21.739158687] TRACE drone(1061081): Entering tun 1 dir: out
+```
 
+Drugi dron wchodzi do bazy, zajmuje wejście 2:
+
+```
 [2026-01-01 23:15:21.739780343] INFO  drone(1061082): Returning to the base
 [2026-01-01 23:15:21.739789911] TRACE drone(1061082): Added to queue, priority 85
 [2026-01-01 23:15:21.739805416] TRACE drone(1061082): Entering tun 2 dir: in
+```
 
+Dron 3 wychodzi wejśćiem 2, po tym jak drugi dron je opuszcza, wejście zmienia kierunek:
+
+```
 [2026-01-01 23:15:21.739826927] INFO  drone(1061083): Leaving the base
 [2026-01-01 23:15:21.739834051] TRACE drone(1061083): Added to queue, priority 0
 [2026-01-01 23:15:21.879880871] WARN  drone(1061082): Battery died! # tun 2 empty
 [2026-01-01 23:15:21.890375967] TRACE drone(1061083): Entering tun 2 dir: out
+```
 
+Dron 4 wchodzi wejściem 1, po tym jak pierszy dron je opuszcza, wejście zmienia kierunek:
+
+```
 [2026-01-01 23:15:21.939265872] INFO  drone(1061081): Left the base # tun 1 empty
-
 [2026-01-01 23:15:21.890974296] INFO  drone(1061096): Returning to the base
 [2026-01-01 23:15:21.941126300] TRACE drone(1061096): Entering tun 1 dir: in
 ```
