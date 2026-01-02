@@ -93,7 +93,7 @@ Symulacja startuje z 4 dronami:
 [2026-01-01 18:01:08.028220520] WARN  operator(994733): Drone count: 4
 ```
 
-Zwiększamy ilość dronów do 8 (sig1)
+Zwiększamy ilość dronów do 8 (sig1):
 
 ```
 [2026-01-01 18:01:08.028239377] WARN  operator(994733): Increasing drone count
@@ -101,7 +101,7 @@ Zwiększamy ilość dronów do 8 (sig1)
 [2026-01-01 18:01:09.028362929] WARN  operator(994733): Drone count: 8
 ```
 
-Zwiększamy ilość dronów, tym razem nie powinna się zwiększyć
+Zwiększamy ilość dronów, tym razem nie powinna się zwiększyć:
 
 ```
 [2026-01-01 18:01:09.228510854] WARN  operator(994733): Increasing drone count
@@ -109,7 +109,7 @@ Zwiększamy ilość dronów, tym razem nie powinna się zwiększyć
 [2026-01-01 18:01:10.228679594] WARN  operator(994733): Drone count: 8
 ```
 
-Zmienjszamy ilość dronów do 4 (sig1)
+Zmienjszamy ilość dronów do 4 (sig1):
 
 ```
 [2026-01-01 18:01:10.428812922] WARN  operator(994733): Decreasing drone count
@@ -117,7 +117,7 @@ Zmienjszamy ilość dronów do 4 (sig1)
 [2026-01-01 18:01:11.428908609] WARN  operator(994733): Drone count: 4
 ```
 
-Zmienjszamy ilość dronów do 2 (sig1)
+Zmienjszamy ilość dronów do 2 (sig1):
 
 ```
 [2026-01-01 18:01:11.629030762] WARN  operator(994733): Decreasing drone count
@@ -125,7 +125,7 @@ Zmienjszamy ilość dronów do 2 (sig1)
 [2026-01-01 18:01:12.629176805] WARN  operator(994733): Drone count: 2
 ```
 
-Zmienjszamy ilość dronów do 1 (sig1)
+Zmienjszamy ilość dronów do 1 (sig1):
 
 ```
 [2026-01-01 18:01:12.829382978] WARN  operator(994733): Decreasing drone count
@@ -133,7 +133,7 @@ Zmienjszamy ilość dronów do 1 (sig1)
 [2026-01-01 18:01:13.830102279] WARN  operator(994733): Drone count: 1
 ```
 
-Zmienjszamy ilość dronów, tym razem nie powinna się zmienszyć
+Zmienjszamy ilość dronów, tym razem nie powinna się zmienszyć:
 
 ```
 [2026-01-01 18:01:14.030297976] WARN  operator(994733): Decreasing drone count
@@ -225,7 +225,7 @@ Symulacja startuje z dwoma dronami z niską baterią w bazie:
 [2026-01-02 16:00:06.003287049] DEBUG operator(44566):   tun_cap = 2
 ```
 
-Dron w bazie z bat <20% poprawnie ignoruje polecenie, i dron w bazie z bat >20% poprawnie akceptuje polecenie
+Dron w bazie z bat <20% poprawnie ignoruje polecenie, i dron w bazie z bat >20% poprawnie akceptuje polecenie:
 
 ```
 [2026-01-02 16:00:06.085923083] DEBUG drone(44571): Bat:  10%
@@ -235,7 +235,7 @@ Dron w bazie z bat <20% poprawnie ignoruje polecenie, i dron w bazie z bat >20% 
 [2026-01-02 16:00:06.305873228] INFO  drone(44572): Suicide mission order accepted
 ```
 
-Dron w locie z bat <20% poprawnie ignoruje polecenie, i dron w locie z bat >20% poprawnie akceptuje polecenie
+Dron w locie z bat <20% poprawnie ignoruje polecenie, i dron w locie z bat >20% poprawnie akceptuje polecenie:
 
 ```
 [2026-01-02 16:00:06.646063571] INFO  drone(44571): Left the base
