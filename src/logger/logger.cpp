@@ -1,5 +1,6 @@
 #include "logger.h"
 
+#include "globals.h"
 #include "process.h"
 
 namespace {
@@ -23,7 +24,11 @@ constexpr void SetupSignals() {
 auto main(int /*argc*/, char* /*argv*/[]) -> int {
     try {
         SetupSignals();
-        auto log_printer = LogPrinter::Create();
+
+        auto params = ShmParameters::Get(ShmKey::PARAMS);
+        auto log_printer = LogPrinter::Create(params->log_level);
+        params.Detach();
+
         CurrentProcess::SignalReady();
 
         LogPrinter::Print("logger", Logger::LogLevel::INFO, "Listening...");

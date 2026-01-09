@@ -5,13 +5,13 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <csignal>
 #include <format>
 #include <iostream>
-#include <iterator>
 #include <utility>
 
-using std::expected, std::unexpected, std::string_view;
+using std::string_view;
 
 namespace {
 
@@ -66,11 +66,12 @@ void Logger::Error(string_view msg) {
     Logger::Log(LogLevel::ERROR, msg);
 }
 
-LogPrinter::LogPrinter(IpcMessageQueue queue) : queue_(std::move(queue)) {}
+LogPrinter::LogPrinter(IpcMessageQueue queue, Logger::LogLevel log_level)
+    : queue_(std::move(queue)), log_level_(log_level) {}
 
-auto LogPrinter::Create() -> LogPrinter {
+auto LogPrinter::Create(Logger::LogLevel log_level) -> LogPrinter {
     static auto queue = IpcMessageQueue::Create(MsgQueueKey::MAIN, 0600);
-    return LogPrinter(std::move(queue));
+    return LogPrinter(std::move(queue), log_level);
 }
 
 auto LogPrinter::FormatLog(Logger::Payload log, bool colored) -> std::string {
@@ -151,6 +152,10 @@ void LogPrinter::ReceiveForever() {
             }
             throw IpcError(message.error());
         }
+        if (message->level < log_level_) {
+            continue;
+        }
+
         const auto formatted_col = FormatLog(*message);
         std::cout << formatted_col;
 

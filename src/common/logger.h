@@ -45,7 +45,7 @@ class Logger {
 
 class LogPrinter {
   public:
-    static auto Create() -> LogPrinter;
+    static auto Create(Logger::LogLevel log_level) -> LogPrinter;
     void ReceiveForever();
 
     static void PrintError(std::string_view sender, std::string_view msg);
@@ -59,6 +59,7 @@ class LogPrinter {
         -> std::string;
     static auto LogLevelToColor(Logger::LogLevel level) -> std::string;
 
-    explicit LogPrinter(IpcMessageQueue queue);
+    explicit LogPrinter(IpcMessageQueue queue, Logger::LogLevel log_level);
     IpcMessageQueue queue_;
+    Logger::LogLevel log_level_;
 };

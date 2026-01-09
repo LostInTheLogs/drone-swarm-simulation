@@ -27,18 +27,43 @@ auto main(int argc, char* argv[]) -> int {
     using namespace std::chrono_literals;
     try {
         std::span<char*> args(argv, argc);
-        if (args.size() > 2) {
+        if (args.size() > 3) {
             throw std::runtime_error("Too many arguments!");
         }
 
         auto shm_params = ShmParameters::Create(ShmKey::PARAMS, 0600);
 
-        if (args.size() == 2) {
+        if (args.size() >= 2) {
             auto scenario = std::stoi(argv[1]);
             if (scenario < 0 || scenario >= TestScenario::COUNT) {
                 throw std::runtime_error("This test scenario does not exist!");
             }
             shm_params->scenario = static_cast<TestScenario>(scenario);
+        }
+
+        if (args.size() >= 3) {
+            char level = argv[2][0];
+            switch (level) {
+                case 'T':
+                    shm_params->log_level = Logger::TRACE;
+                    break;
+                case 'D':
+                    shm_params->log_level = Logger::DEBUG;
+                    break;
+                case 'I':
+                    shm_params->log_level = Logger::INFO;
+                    break;
+                case 'W':
+                    shm_params->log_level = Logger::WARNING;
+                    break;
+                case 'E':
+                    shm_params->log_level = Logger::ERROR;
+                    break;
+                default:
+                    throw std::runtime_error(
+                        "Log level can only be one of T/D/I/W/E!");
+                    break;
+            }
         }
 
         switch (shm_params->scenario) {
@@ -91,6 +116,7 @@ auto main(int argc, char* argv[]) -> int {
             ShmDrones::value_type::CalcSize(shm_params->init_drone_count * 2UL);
         auto drones_arr =
             ShmDrones::Create(ShmKey::DRONES, 0600, drones_arr_size);
+        return 1;
 
         auto base = ShmBaseData::Create(ShmKey::BASE_DATA, 0600);
 

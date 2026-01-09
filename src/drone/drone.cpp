@@ -110,6 +110,9 @@ constexpr void BatteryThread(const GlobalParameters& params,
         auto clamped = std::clamp(state.bat_level, 0, 100);
         if (state.bat_level == clamped && clamped % 10 == 0) {
             GetLogger().Debug(std::format("Bat: {:>3}%", clamped));
+            if (clamped <= 20 || clamped >= 80) {
+                GetLogger().Info(std::format("Bat: {:>3}%", clamped));
+            }
         }
         state.bat_level = clamped;
 

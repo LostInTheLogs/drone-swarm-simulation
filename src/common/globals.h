@@ -19,6 +19,7 @@ enum TestScenario : uint8_t {
 
 struct GlobalParameters {
     TestScenario scenario = TestScenario::NO_TEST;
+    Logger::LogLevel log_level = Logger::TRACE;
 
     pid_t operator_pid = 0;
 
