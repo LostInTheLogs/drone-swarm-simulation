@@ -28,10 +28,10 @@ struct GlobalParameters {
     int max_drones_at_base = 30;  // < N/2
 
     int max_charges = 0;
-    std::chrono::milliseconds battery_lifetime{0};
-    std::chrono::milliseconds battery_chargetime{0};
+    std::chrono::milliseconds battery_lifetime{500};
+    std::chrono::milliseconds battery_chargetime{20};
 
-    std::chrono::milliseconds tunnel_length{0};
+    std::chrono::milliseconds tunnel_length{20};
     unsigned int tun_cap = 2;
 
     int low_bat_thr = 20;
