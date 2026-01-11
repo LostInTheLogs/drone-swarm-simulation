@@ -21,7 +21,7 @@ class SharedMemory {
     auto operator=(const SharedMemory&) -> SharedMemory& = delete;
     ~SharedMemory() {
         try {
-            if (ptr_) {
+            if (ptr_ != nullptr) {
                 Detach();
             }
             if (owner_) {
@@ -74,7 +74,7 @@ class SharedMemory {
         if (reinterpret_cast<std::intptr_t>(mem) == -1) {
             throw IpcError(IpcType::SHARED_MEMORY, -1, id_, errno);
         }
-        ptr_ = reinterpret_cast<T*>(mem);
+        ptr_ = mem;
     }
 
     void Detach() {
@@ -85,15 +85,15 @@ class SharedMemory {
     }
 
     auto operator*() -> T& {
-        return *ptr_;
+        return *reinterpret_cast<T*>(ptr_);
     }
 
     auto operator->() -> T* {
-        return ptr_;
+        return reinterpret_cast<T*>(ptr_);
     }
 
     auto operator->() const -> const T* {
-        return ptr_;
+        return reinterpret_cast<T*>(ptr_);
     }
 
   private:
@@ -112,6 +112,6 @@ class SharedMemory {
     }
 
     int id_;
-    T* ptr_{};
+    void* ptr_{};
     bool owner_;
 };

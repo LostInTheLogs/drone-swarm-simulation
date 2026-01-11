@@ -21,7 +21,10 @@ endif()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(
         -fsanitize=address,undefined
-        -fno-omit-frame-pointer)
+        -fno-omit-frame-pointer
+        -fno-optimize-sibling-calls
+        -O0
+        )
     add_link_options(-fsanitize=address,undefined)
 endif()
 

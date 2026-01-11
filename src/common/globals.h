@@ -6,6 +6,7 @@
 #include "ipc/shared_memory.h"
 #include "logger.h"
 #include "queue.h"
+#include "thread_utils.h"
 
 enum TestScenario : uint8_t {
     NO_TEST,
@@ -23,14 +24,14 @@ struct GlobalParameters {
 
     pid_t operator_pid = 0;
 
-    int init_drone_count = 5;    // N
-    int max_drones_at_base = 2;  // < N/2
+    int init_drone_count = 50;    // N
+    int max_drones_at_base = 30;  // < N/2
 
     int max_charges = 0;
-    std::chrono::milliseconds battery_lifetime{1000};
-    std::chrono::milliseconds battery_chargetime{400};
+    std::chrono::milliseconds battery_lifetime{500};
+    std::chrono::milliseconds battery_chargetime{20};
 
-    std::chrono::milliseconds tunnel_length{200};
+    std::chrono::milliseconds tunnel_length{20};
     unsigned int tun_cap = 2;
 
     int low_bat_thr = 20;
@@ -47,7 +48,7 @@ struct GlobalParameters {
         logger.Debug(std::format("  T2=battery_lifetime = {} ms",
                                  battery_lifetime.count()));
         logger.Debug(std::format("  T1=battery_chargetime = {} ms",
-                                 battery_lifetime.count()));
+                                 battery_chargetime.count()));
         logger.Debug(
             std::format("  tunnel_length = {} ms", tunnel_length.count()));
         logger.Debug(std::format("  tun_cap = {}", tun_cap));
@@ -69,5 +70,14 @@ struct BaseData {
 using ShmParameters = SharedMemory<GlobalParameters>;
 using ShmBaseData = SharedMemory<BaseData>;
 using ShmDrones = SharedMemory<Array<pid_t>>;
+
 using ProcQueue = Queue<pid_t>;
-using ShmProcQueue = SharedMemory<Queue<pid_t>>;
+struct QueueData {
+    PubThreadMutex mut;
+    PubThreadCond changed;
+    PubThreadMutex can_leave_changed_mut;
+    PubThreadCond can_leave_changed;
+    ProcQueue queue;  // WARN: MUST BE LAST
+};
+
+using ShmProcQueue = SharedMemory<QueueData>;

@@ -15,9 +15,16 @@ class Thread {
     using Callable = std::function<void()>;
 
   public:
+    Thread(Thread &&) noexcept;
+    Thread(const Thread &) = delete;
+    auto operator=(Thread &&) noexcept -> Thread &;
+    auto operator=(const Thread &) -> Thread & = delete;
+    ~Thread();
+
     [[nodiscard]] static auto Create(const Callable &function) -> Thread;
-    void Join() const;
+    void Join();
     void Cancel() const;
+    void Detach();
 
     template <class Rep, class Period>
     static auto SleepFor(const std::chrono::duration<Rep, Period> &dur)
@@ -55,5 +62,8 @@ class Thread {
     }
 
   private:
+    Thread() = default;
+
     pthread_t thread_id_{};
+    bool joinable_ = true;
 };

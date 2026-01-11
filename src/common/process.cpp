@@ -6,6 +6,8 @@
 #include <unistd.h>
 
 #include <csignal>
+#include <cstdio>
+#include <exception>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -18,18 +20,15 @@ CurrentProcess& g_curr_process = CurrentProcess::Get();
 Process::Process(pid_t process_id) : process_id_(process_id) {}
 
 Process::Process(pid_t process_id, bool joinable)
-    : process_id_(process_id), owner_(joinable) {}
+    : process_id_(process_id), joinable_(joinable) {}
 
 Process::Process(Process&& other) noexcept
-    : process_id_(other.process_id_), owner_(other.owner_) {
-    other.owner_ = false;
+    : process_id_(other.process_id_), joinable_(other.joinable_) {
+    other.joinable_ = false;
 }
 Process::~Process() {
-    if (owner_) {
-        try {
-            Signal(SIGTERM);
-        } catch (const std::system_error&) {  // NOLINT
-        }
+    if (joinable_) {
+        std::terminate();
     }
 }
 
@@ -121,7 +120,7 @@ void Process::Exec(std::span<const char*> args, int fd_to_keep) {
     }
 }
 
-auto Process::TermWait() const -> int {
+auto Process::TermWait() -> int {
     Signal(SIGTERM);
     return Wait();
 }
@@ -132,22 +131,30 @@ auto Process::Signal(int signal) const -> void {
     }
 }
 
-auto Process::Wait() const -> int {
+auto Process::Wait() -> int {
     int status{};
+    if (!joinable_) {
+        return status;
+    }
 
     while (true) {
         auto success = waitpid(process_id_, &status, 0);
-        const auto interrupted = success == -1 && errno == EINTR;
-        if (!interrupted || CurrentProcess::TerminateReceived()) {
+        if (success != -1) {
             break;
         }
+        if (errno == EINTR) {
+            continue;
+        }
+        throw std::system_error(errno, std::generic_category());
     }
+
+    joinable_ = false;
 
     return status;
 }
 
-void Process::Disown() {
-    owner_ = false;
+void Process::Detach() {
+    joinable_ = false;
 }
 
 auto Process::WaitReady(PipeReader& pipe) -> void {

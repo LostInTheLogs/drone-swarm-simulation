@@ -38,12 +38,6 @@ enum class SemIds : int {
     TUNNEL1_1,
     TUNNEL2_1,
     FREE_SPOTS_BASE,
-    IN_QUEUE_A0,
-    IN_QUEUE_B1,
-    IN_QUEUE_C1,
-    OUT_QUEUE_A0,
-    OUT_QUEUE_B1,
-    OUT_QUEUE_C1,
     DRONES_A0,
     DRONES_B1,
     DRONES_C1,
@@ -90,12 +84,6 @@ class SemInit<SemIds> {
         {SemIds::TUNNEL1_1, 1},        //
         {SemIds::TUNNEL2_1, 1},        //
         {SemIds::FREE_SPOTS_BASE, 0},  //
-        {SemIds::IN_QUEUE_A0, 0},      //
-        {SemIds::IN_QUEUE_B1, 1},      //
-        {SemIds::IN_QUEUE_C1, 1},      //
-        {SemIds::OUT_QUEUE_A0, 0},     //
-        {SemIds::OUT_QUEUE_B1, 1},     //
-        {SemIds::OUT_QUEUE_C1, 1},     //
         {SemIds::DRONES_A0, 0},        //
         {SemIds::DRONES_B1, 1},        //
         {SemIds::DRONES_C1, 1},        //

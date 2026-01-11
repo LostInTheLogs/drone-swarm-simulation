@@ -64,8 +64,8 @@ class Queue {
         ShiftUp(found);
     }
 
-    static auto CalcSize(size_t n) -> size_t {
-        return sizeof(Queue<T>) + (sizeof(Item) * (n - 1));
+    static auto CalcExtraSize(size_t n) -> size_t {
+        return (sizeof(Item) * (n - 1));
     }
 
   private:

@@ -1,6 +1,7 @@
 #include <unistd.h>
 
 #include <csignal>
+#include <cstdio>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -72,6 +73,7 @@ auto main(int argc, char* argv[]) -> int {
                 shm_params->max_drones_at_base = 2;
                 shm_params->max_charges = 0;
                 shm_params->battery_lifetime = 500ms;
+                shm_params->battery_chargetime = 400ms;
                 shm_params->tunnel_length = 1ms;
                 shm_params->tun_cap = 10;
                 break;
@@ -81,16 +83,19 @@ auto main(int argc, char* argv[]) -> int {
                 shm_params->tun_cap = 1;
                 shm_params->tunnel_length = 200ms;
                 shm_params->battery_lifetime = 10s;
+                shm_params->battery_chargetime = 400ms;
                 break;
             case SUICIDE_ORDER:
                 shm_params->init_drone_count = 2;
-                shm_params->battery_lifetime = 800ms;
+                shm_params->battery_lifetime = 1600ms;
+                shm_params->battery_chargetime = 800ms;
                 shm_params->tunnel_length = 200ms;
                 break;
             case DEAD_BAT_IN_TUNNEL:
                 shm_params->tun_cap = 1;
-                shm_params->battery_lifetime = 2000ms;
-                shm_params->tunnel_length = 200ms;
+                shm_params->battery_lifetime = 1500ms;
+                shm_params->battery_chargetime = 400ms;
+                shm_params->tunnel_length = 600ms;
                 shm_params->init_drone_count = 10;
                 shm_params->max_drones_at_base = 100;
                 break;
@@ -105,18 +110,20 @@ auto main(int argc, char* argv[]) -> int {
                 break;
         }
 
-        const auto queue_size =
-            Queue<pid_t>::CalcSize(shm_params->init_drone_count);
+        const auto queue_data_size =
+            sizeof(ShmProcQueue::value_type) +
+            Queue<pid_t>::CalcExtraSize(shm_params->init_drone_count * 2UL);
         auto in_queue =
-            ShmProcQueue::Create(ShmKey::IN_QUEUE, 0600, queue_size);
+            ShmProcQueue::Create(ShmKey::IN_QUEUE, 0600, queue_data_size);
+        in_queue.Detach();
         auto out_queue =
-            ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0600, queue_size);
+            ShmProcQueue::Create(ShmKey::OUT_QUEUE, 0600, queue_data_size);
+        out_queue.Detach();
 
         const auto drones_arr_size =
             ShmDrones::value_type::CalcSize(shm_params->init_drone_count * 2UL);
         auto drones_arr =
             ShmDrones::Create(ShmKey::DRONES, 0600, drones_arr_size);
-        return 1;
 
         auto base = ShmBaseData::Create(ShmKey::BASE_DATA, 0600);
 

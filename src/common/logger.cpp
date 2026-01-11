@@ -43,7 +43,7 @@ void Logger::Log(LogLevel level, string_view msg) {
     CopyStrToArray(msg, payload.msg);
 
     auto sent = queue_.Send(payload, MessageTypeId::LOGGER);
-    if (!sent) {
+    if (!sent && !CurrentProcess::TerminateReceived()) {
         LogPrinter::PrintError(
             string_view(name_),
             std::format("Sending logs failed: {}", sent.error().what()));

@@ -34,10 +34,10 @@ class Process {
     [[nodiscard]]
     static auto CreateReady(std::span<const char*> args) -> Process;
 
-    auto TermWait() const -> int;  // NOLINT(*nodiscard*)
+    auto TermWait() -> int;  // NOLINT(*nodiscard*)
     auto Signal(int signal) const -> void;
-    auto Wait() const -> int;  // NOLINT(*nodiscard*)
-    void Disown();
+    auto Wait() -> int;  // NOLINT(*nodiscard*)
+    void Detach();
 
     static auto WaitReady(PipeReader& pipe) -> void;
 
@@ -50,7 +50,7 @@ class Process {
 
     pid_t process_id_{};
 
-    bool owner_ = false;
+    bool joinable_ = false;
 };
 
 class CurrentProcess : public Process {

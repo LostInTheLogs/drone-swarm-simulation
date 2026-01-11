@@ -17,6 +17,7 @@
             src = ./.;
 
             buildInputs = with pkgs; [
+              libllvm
               clang-tools
               cmake
             ];
