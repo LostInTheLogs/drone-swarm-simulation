@@ -142,6 +142,13 @@ void LogPrinter::ReceiveForever() {
     }
 
     while (true) {
+        if (CurrentProcess::TerminateReceived()) {
+            if (-1 == close(file)) {
+                throw std::system_error(errno, std::generic_category());
+            }
+            return;
+        }
+
         auto message = queue_.Receive<Logger::Payload>(MessageTypeId::LOGGER);
         if (!message) {
             if (message.error().code() == std::errc::interrupted) {

@@ -272,7 +272,8 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
             }
 
             while (state.drones->Size() <
-                   static_cast<size_t>(state.curr_drone_cap)) {
+                       static_cast<size_t>(state.curr_drone_cap) &&
+                   !CurrentProcess::TerminateReceived()) {
                 if (!spawn_drone()) {
                     break;
                 }
@@ -280,9 +281,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
 
             state.mut.UnlockWrite();
 
-            if (!Thread::SleepFor(90ms)) {
-                break;
-            }
+            auto slept = Thread::SleepFor(90ms);
         }
 
         Err(state.mut.LockWrite(Retry::ALWAYS));
