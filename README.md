@@ -470,7 +470,10 @@ pthread_create():
 <https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/thread.cpp#L5-L25>
 
 pthread_join():
-<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/thread.cpp#L27-L32>
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/5fa6a9a51088f672181d8d1557193422a23575ca/src/common/thread.cpp#L62-L73>
+
+pthread_detach():
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/5fa6a9a51088f672181d8d1557193422a23575ca/src/common/thread.cpp#L82-L89>
 
 pthread_cancel():
 <https://github.com/LostInTheLogs/drone-swarm-simulation/blob/37cba7ad23e2c57b3976c7c535beb70892751997/src/common/thread.cpp#L34-L39>
