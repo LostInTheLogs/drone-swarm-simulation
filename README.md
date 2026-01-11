@@ -88,7 +88,7 @@ Wejścia mają miejsce tylko na x dronów, są jednostronne w danym momencie cz
 
 Wchodzenie/wychodzenie z bazy wygląda tak:
 
-1. dron ustawia się w kolejce z priorytetem $100-\text{poziom_baterii}$ (kolejka w shared mem)
+1. dron ustawia się w kolejce z priorytetem 100-poziom_baterii (kolejka w shared mem)
 2. czeka aż będzie pierwszy w kolejce (pthread_cond):
 
     - jeśli podczas czekania dostał polecenia ataku samobójczego i kierunek == wejście lub dostał SIGINT/SIGTERM to usuwa się z kolejki i kończy procedure
