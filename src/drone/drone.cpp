@@ -71,6 +71,9 @@ constexpr void SignalThread(const GlobalParameters& params, DroneState& state,
     while (true) {
         int sig{};
         sigwait(&sigset, &sig);
+        if (CurrentProcess::TerminateReceived()) {
+            return;
+        }
 
         state.mutex.Lock();
         if (state.bat_level < params.low_bat_thr) {
@@ -400,7 +403,6 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
     auto signal_thread = Thread::Create([&state, &params, &in_queue]() {
         SignalThread(params, state, *in_queue);
     });
-    signal_thread.Detach();
 
     auto battery_thread =
         Thread::Create([&state, &params, &in_queue, &out_queue]() {
@@ -424,6 +426,8 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
             if (!EnterExitSequence(params, state, base, *out_queue, *in_queue,
                                    TunnelDir::OUT, tunnel1, tunnel2)) {
                 battery_thread.Join();
+                g_curr_process.Signal(SIGUSR1);
+                signal_thread.Join();
                 return;
             }
             GetLogger().Info("Left the base");
@@ -442,6 +446,8 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
                     continue;
                 }
                 battery_thread.Join();
+                g_curr_process.Signal(SIGUSR1);
+                signal_thread.Join();
                 return;
             }
             GetLogger().Info("Back at the base");
@@ -464,6 +470,8 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
     }
     state.mutex.Unlock();
     battery_thread.Join();
+    g_curr_process.Signal(SIGUSR1);
+    signal_thread.Join();
 }
 }  // namespace
 
@@ -493,7 +501,6 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
 
         MainThread(*params, state);
         GetLogger().Info("Goodbye");
-
     } catch (std::exception& e) {
         LogPrinter::PrintError("drone", e.what());
         return 1;
