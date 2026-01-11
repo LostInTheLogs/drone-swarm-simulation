@@ -73,29 +73,37 @@ wątki:
 - battery: zmienia poziom baterii i budzi wątek główny gdy bateria jest niska lub się naładuje
 - signal: czeka na sygnał do misji samobójczej i budzi wątek główny
 - main:
-    - startuje w bazie
     - czeka na zmiany stanu
     - po ładowaniu bateri ($T_1$) opuszcza bazę
     - powraca do bazy przy baterii < 20%
     - destrukcja przy baterii = 0%
 
+## src/commander
+
+- prosty interfejs do zarządzania symulacją
+
 ## Działanie wejść:
 
-Wejścia mają miejsce tylko na x dronów, i przejscie przez nie trwa y czasu.
+Wejścia mają miejsce tylko na x dronów, są jednostronne w danym momencie czasu i przejscie przez nie trwa y czasu.
 
 Wchodzenie/wychodzenie z bazy wygląda tak:
 
-1. dron ustawia się w kolejce z priorytetem (100-poziom_baterii)
-2. co 50ms:
-    - sprawdza czy jest pierwszy w kolejce, jeśli nie, to dalej czeka
-    - sprawdza czy w bazie jest miejsce (wait z IPC_NOWAIT na semaforze)
-    - sprawdzia czy wejście 1 lub 2 jest wolne i ma jego kierunek (lub jest puste)
-    - jeśli któreś wejście jest dostępne, to do niego wchodzi i wychodzi z kolejki
-    - jeśli nie, to zwalnia miejsce w bazie (signal na semaforze)
-    - w przypadku błędu wychodzi z kolejki, tunelu i zwalnia miejsce w bazie
-3. czeka aż wyjdzie z tunelu (sleep y) zwalnia zajęte miejsce w tunelu
+1. dron ustawia się w kolejce z priorytetem $100-\text{poziom_baterii}$ (kolejka w shared mem)
+2. czeka aż będzie pierwszy w kolejce (pthread_cond):
 
-wolne miejsca w bazie to semafor, a wolne miejsca i kierunek wejścia są w shared mem.
+    - jeśli podczas czekania dostał polecenia ataku samobójczego i kierunek == wejście lub dostał SIGINT/SIGTERM to usuwa się z kolejki i kończy procedure
+    - jeśli jest pierwszy w kolejce:
+    - jeśli kierunek == wejście to zajmuje miejsce w bazie (wait na semaforze), jeśli podczas czekania... (tak jak wyżej)
+    - czeka aż wejście do bazy będzie wolne (pthread_cond), jeśli podczas czekania... (tak jak wyżej)
+    - jeśli nie jest już pierwszy w kolejce, zwalnia miejsce w bazie i wraca do 2.
+    - próbuje wejśc do wejścia 1/2
+        - jeśli się nie udało to wraca do czekania aż wejście będzie wolne
+        - usuwa się z kolejki
+
+3. czeka aż przejdzie przez wejście (sleep(długość_tunelu))
+    - wychodzi z tunelu
+    - jeśli dostał SIGINT/SIGTERM podczas snu zwalnia miejsce w bazie i kończy procedure
+    - jeśli kierunek==wyjście to zwalnia miejsce w bazie
 
 # Testy
 
