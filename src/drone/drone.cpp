@@ -241,7 +241,6 @@ auto WaitForTunInQueue(const GlobalParameters& params, DroneState& state,
             }
         }
         queue.mut.Unlock();
-        bool first = true;
 
         // wait until we can enter the base
         if (dir == TunnelDir::IN) {
@@ -261,7 +260,7 @@ auto WaitForTunInQueue(const GlobalParameters& params, DroneState& state,
 
         // wait until we can enter the tunnel
         queue.can_leave_changed_mut.Lock();
-        while (first) {
+        while (true) {
             if (should_abort()) {
                 queue.can_leave_changed_mut.Unlock();
                 leave_queue();
@@ -275,8 +274,7 @@ auto WaitForTunInQueue(const GlobalParameters& params, DroneState& state,
                 queue.mut.Unlock();
                 queue.can_leave_changed_mut.Unlock();
                 leave_base();
-                first = false;
-                continue;
+                break;
             }
 
             // check tunnel 1
@@ -299,9 +297,6 @@ auto WaitForTunInQueue(const GlobalParameters& params, DroneState& state,
 
             queue.mut.Unlock();
             queue.can_leave_changed.Wait(queue.can_leave_changed_mut);
-        }
-        if (!first) {
-            continue;
         }
     }
 };
