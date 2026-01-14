@@ -2,6 +2,14 @@
 
 [LostInTheLogs/drone-swarm-simulation](https://github.com/LostInTheLogs/drone-swarm-simulation)
 
+# Jak uruchomić kod
+
+```bash
+cmake -B build && cd build && make
+./DroneSwarm # symulacja
+./commander # interfejs do zarządzania symulacją
+```
+
 # Opis zadania
 
 Rój autonomicznych dronów liczy początkowo $N$ egzemplarzy. Drony startują (i lądują)
@@ -88,7 +96,7 @@ Wejścia mają miejsce tylko na x dronów, są jednostronne w danym momencie cz
 
 Wchodzenie/wychodzenie z bazy wygląda tak:
 
-1. dron ustawia się w kolejce z priorytetem 100-poziom_baterii (kolejka w shared mem)
+1. dron ustawia się w kolejce z priorytetem 100-poziom_baterii (kolejka max heap w shared mem)
 2. czeka aż będzie pierwszy w kolejce (pthread_cond):
 
     - jeśli podczas czekania dostał polecenia ataku samobójczego i kierunek == wejście lub dostał SIGINT/SIGTERM to usuwa się z kolejki i kończy procedure
@@ -104,6 +112,12 @@ Wchodzenie/wychodzenie z bazy wygląda tak:
     - wychodzi z tunelu
     - jeśli dostał SIGINT/SIGTERM podczas snu zwalnia miejsce w bazie i kończy procedure
     - jeśli kierunek==wyjście to zwalnia miejsce w bazie
+
+W kodzie kroki 1 i 2 są w funkcji WaitForTunInQueue i EnterOneTunnel:
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/679f54510701769ca633ce9e2a9d824984d2fb94/src/drone/drone.cpp#L165-L302>
+
+A Krok 3 w EnterExitSequence, która na początku wywołuje WaitForTunInQueue
+<https://github.com/LostInTheLogs/drone-swarm-simulation/blob/679f54510701769ca633ce9e2a9d824984d2fb94/src/drone/drone.cpp#L304-L375>
 
 # Testy
 
