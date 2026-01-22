@@ -404,66 +404,73 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
             BatteryThread(params, state, *in_queue, *out_queue);
         });
 
-    state.mutex.Lock();
-    while (true) {
-        while (!StateChanged(params, state)) {
-            state.changed.Wait(state.mutex);
-        }
-        if (state.bat_level <= 0 || CurrentProcess::TerminateReceived()) {
-            break;
-        }
-
-        if (ShouldLeave(state)) {
-            state.charges++;
-            state.mutex.Unlock();
-
-            GetLogger().Info("Leaving the base");
-            if (!EnterExitSequence(params, state, base, *out_queue, *in_queue,
-                                   TunnelDir::OUT, tunnel1, tunnel2)) {
-                battery_thread.Join();
-                g_curr_process.Signal(SIGUSR1);
-                signal_thread.Join();
-                return;
+    try {
+        state.mutex.Lock();
+        while (true) {
+            while (!StateChanged(params, state)) {
+                state.changed.Wait(state.mutex);
             }
-            GetLogger().Info("Left the base");
-
-            state.mutex.Lock();
-            continue;
-        }
-        if (ShouldReturn(params, state)) {
-            state.mutex.Unlock();
-
-            GetLogger().Info("Returning to the base");
-            if (!EnterExitSequence(params, state, base, *in_queue, *in_queue,
-                                   TunnelDir::IN, tunnel2, tunnel1)) {
-                if (!CurrentProcess::TerminateReceived()) {
-                    state.mutex.Lock();
-                    continue;
-                }
-                battery_thread.Join();
-                g_curr_process.Signal(SIGUSR1);
-                signal_thread.Join();
-                return;
-            }
-            GetLogger().Info("Back at the base");
-
-            state.mutex.Lock();
-            if (state.charges >= params.max_charges) {
-                GetLogger().Warning("Max charging cycles, decomissioning");
-                CurrentProcess::Get().Signal(SIGTERM);
+            if (state.bat_level <= 0 || CurrentProcess::TerminateReceived()) {
                 break;
             }
-            continue;
+
+            if (ShouldLeave(state)) {
+                state.charges++;
+                state.mutex.Unlock();
+
+                GetLogger().Info("Leaving the base");
+                if (!EnterExitSequence(params, state, base, *out_queue,
+                                       *in_queue, TunnelDir::OUT, tunnel1,
+                                       tunnel2)) {
+                    battery_thread.Join();
+                    g_curr_process.Signal(SIGUSR1);
+                    signal_thread.Join();
+                    return;
+                }
+                GetLogger().Info("Left the base");
+
+                state.mutex.Lock();
+                continue;
+            }
+            if (ShouldReturn(params, state)) {
+                state.mutex.Unlock();
+
+                GetLogger().Info("Returning to the base");
+                if (!EnterExitSequence(params, state, base, *in_queue,
+                                       *in_queue, TunnelDir::IN, tunnel2,
+                                       tunnel1)) {
+                    if (!CurrentProcess::TerminateReceived()) {
+                        state.mutex.Lock();
+                        continue;
+                    }
+                    battery_thread.Join();
+                    g_curr_process.Signal(SIGUSR1);
+                    signal_thread.Join();
+                    return;
+                }
+                GetLogger().Info("Back at the base");
+
+                state.mutex.Lock();
+                if (state.charges >= params.max_charges) {
+                    GetLogger().Warning("Max charging cycles, decomissioning");
+                    CurrentProcess::Get().Signal(SIGTERM);
+                    break;
+                }
+                continue;
+            }
         }
+        if (state.at_base) {
+            base.free_spots.Signal(Retry::ALWAYS);
+            state.at_base = false;
+            in_queue->can_leave_changed_mut.Lock();
+            in_queue->can_leave_changed.Broadcast();
+            in_queue->can_leave_changed_mut.Unlock();
+        }
+        state.mutex.Unlock();
+    } catch (std::exception& e) {
+        LogPrinter::PrintError("drone", e.what());
     }
-    if (state.at_base) {
-        base.free_spots.Signal(Retry::ALWAYS);
-        state.at_base = false;
-        in_queue->can_leave_changed_mut.Lock();
-        in_queue->can_leave_changed.Broadcast();
-        in_queue->can_leave_changed_mut.Unlock();
-    }
-    state.mutex.Unlock();
+
     battery_thread.Join();
     g_curr_process.Signal(SIGUSR1);
     signal_thread.Join();
@@ -471,35 +478,30 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
 }  // namespace
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int {
-    try {
-        GetLogger().Info("Hello world");
+    GetLogger().Info("Hello world");
 
-        SetupSignals();
+    SetupSignals();
 
-        auto params = ShmParameters::Get(ShmKey::PARAMS);
-        DroneState state;
+    auto params = ShmParameters::Get(ShmKey::PARAMS);
+    DroneState state;
 
-        if (params->scenario == TestScenario::PRIORITY_QUEUE ||
-            params->scenario == TestScenario::DEAD_BAT_IN_TUNNEL ||
-            (params->scenario == TestScenario::TUNNEL_DIR_CHANGE &&
-             getpid() % 2 == 0)) {
-            std::random_device rdev;
-            std::mt19937 gen(rdev());
-            std::uniform_int_distribution<int> dist(10, 20);
-            state.at_base = false;
-            state.docked = false;
-            state.bat_level = dist(gen);
-            GetLogger().Debug(std::format("Bat: {:>3}%", state.bat_level));
-        } else if (params->scenario == TestScenario::SUICIDE_ORDER) {
-            state.bat_level = 2;
-        }
-
-        MainThread(*params, state);
-        GetLogger().Info("Goodbye");
-    } catch (std::exception& e) {
-        LogPrinter::PrintError("drone", e.what());
-        return 1;
+    if (params->scenario == TestScenario::PRIORITY_QUEUE ||
+        params->scenario == TestScenario::DEAD_BAT_IN_TUNNEL ||
+        (params->scenario == TestScenario::TUNNEL_DIR_CHANGE &&
+         getpid() % 2 == 0)) {
+        std::random_device rdev;
+        std::mt19937 gen(rdev());
+        std::uniform_int_distribution<int> dist(10, 20);
+        state.at_base = false;
+        state.docked = false;
+        state.bat_level = dist(gen);
+        GetLogger().Debug(std::format("Bat: {:>3}%", state.bat_level));
+    } else if (params->scenario == TestScenario::SUICIDE_ORDER) {
+        state.bat_level = 2;
     }
+
+    MainThread(*params, state);
+    GetLogger().Info("Goodbye");
 
     return 0;
 }

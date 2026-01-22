@@ -139,7 +139,6 @@ auto main(int argc, char* argv[]) -> int {
         shm_params.Detach();
         operator_proc.Wait();
 
-        auto slept = Thread::SleepFor(200ms);
         logger_process.TermWait();
     } catch (std::exception& e) {
         LogPrinter::PrintError("main", e.what());

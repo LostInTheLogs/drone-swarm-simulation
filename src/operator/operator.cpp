@@ -230,10 +230,6 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
                 int sig{};
                 sigwait(&sigset, &sig);
 
-                if (CurrentProcess::TerminateReceived()) {
-                    return;
-                }
-
                 if (!state.mut.LockWrite()) {
                     break;
                 }
@@ -260,6 +256,11 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
                     }
                     logger.Debug("Zombie drone collected");
                     state.drones->Remove(pid);
+                }
+
+                if (CurrentProcess::TerminateReceived() &&
+                    state.drones->Size() == 0) {
+                    return;
                 }
 
                 state.mut.UnlockWrite();

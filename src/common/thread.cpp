@@ -53,7 +53,7 @@ auto Thread::Create(const std::function<void()>& function) -> Thread {
         heap_fn);
 
     if (error != 0) {
-        throw std::system_error();
+        throw std::system_error(error, std::generic_category());
     }
 
     return thread;
