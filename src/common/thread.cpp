@@ -37,7 +37,8 @@ Thread::~Thread() {
     }
 }
 
-auto Thread::Create(const std::function<void()>& function) -> Thread {
+auto Thread::Create(const std::function<void()>& function)
+    -> std::expected<Thread, std::system_error> {
     Thread thread;
 
     auto* heap_fn = new std::function(function);
@@ -53,9 +54,12 @@ auto Thread::Create(const std::function<void()>& function) -> Thread {
         heap_fn);
 
     if (error != 0) {
-        throw std::system_error(error, std::generic_category());
+        delete heap_fn;
+        return std::unexpected(
+            std::system_error(error, std::generic_category()));
     }
 
+    thread.joinable_ = true;
     return thread;
 }
 

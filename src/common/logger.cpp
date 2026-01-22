@@ -38,10 +38,11 @@ void Logger::Log(LogLevel level, string_view msg) {
                     .sender_pid = getpid(),
                     .sender_name = name_,
                     .msg = {},
-                    .time = std::chrono::system_clock::now()};
+                    .time = {}};
 
     CopyStrToArray(msg, payload.msg);
 
+    payload.time = std::chrono::system_clock::now();
     auto sent = queue_.Send(payload, MessageTypeId::LOGGER);
     if (!sent && !CurrentProcess::TerminateReceived()) {
         LogPrinter::PrintError(

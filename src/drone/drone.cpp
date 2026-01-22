@@ -61,6 +61,14 @@ constexpr void SetupSignals() {
     sigaddset(&sigset, SIGUSR1);
     pthread_sigmask(SIG_BLOCK, &sigset, nullptr);
 }
+constexpr void BroadcastAll(QueueData& queue) {
+    queue.mut.Lock();
+    queue.changed.Broadcast();
+    queue.mut.Unlock();
+    queue.can_leave_changed_mut.Lock();
+    queue.can_leave_changed.Broadcast();
+    queue.can_leave_changed_mut.Unlock();
+}
 
 constexpr void SignalThread(const GlobalParameters& params, DroneState& state,
                             QueueData& in_queue) {
@@ -86,24 +94,8 @@ constexpr void SignalThread(const GlobalParameters& params, DroneState& state,
         state.changed.Broadcast();
         state.mutex.Unlock();
 
-        in_queue.can_leave_changed_mut.Lock();
-        in_queue.can_leave_changed.Broadcast();
-        in_queue.can_leave_changed_mut.Unlock();
-        in_queue.mut.Lock();
-        in_queue.changed.Broadcast();
-        in_queue.mut.Unlock();
-
-        return;
+        BroadcastAll(in_queue);
     }
-}
-
-constexpr void BroadcastAll(QueueData& queue) {
-    queue.mut.Lock();
-    queue.changed.Broadcast();
-    queue.mut.Unlock();
-    queue.can_leave_changed_mut.Lock();
-    queue.can_leave_changed.Broadcast();
-    queue.can_leave_changed_mut.Unlock();
 }
 
 constexpr void BatteryThread(const GlobalParameters& params, DroneState& state,
@@ -114,11 +106,6 @@ constexpr void BatteryThread(const GlobalParameters& params, DroneState& state,
     while (true) {
         next += dur;
         auto slept = Thread::SleepUntil(next);
-        if (!slept) {
-            GetLogger().Info("Sleep interruped");
-            CurrentProcess::Get().Signal(SIGTERM);
-            return;
-        }
 
         state.mutex.Lock();
         if (state.docked) {
@@ -143,11 +130,15 @@ constexpr void BatteryThread(const GlobalParameters& params, DroneState& state,
                 GetLogger().Warning("Battery died!");
                 CurrentProcess::Get().Signal(SIGTERM);
             }
+
+            auto terminated = CurrentProcess::TerminateReceived();
+
             state.changed.Broadcast();
             state.mutex.Unlock();
             BroadcastAll(in_queue);
             BroadcastAll(out_queue);
-            if (bat_died || CurrentProcess::TerminateReceived()) {
+
+            if (bat_died || terminated) {
                 return;
             }
         } else {
@@ -398,13 +389,32 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
     auto signal_thread = Thread::Create([&state, &params, &in_queue]() {
         SignalThread(params, state, *in_queue);
     });
+    if (!signal_thread) {
+        GetLogger().Error(std::format("Couldn't create thread: {}",
+                                      signal_thread.error().what()));
+        return;
+    }
 
     auto battery_thread =
         Thread::Create([&state, &params, &in_queue, &out_queue]() {
             BatteryThread(params, state, *in_queue, *out_queue);
         });
+    if (!battery_thread) {
+        GetLogger().Error(std::format("Couldn't create thread: {}",
+                                      battery_thread.error().what()));
+        g_curr_process.Signal(SIGTERM);
+        g_curr_process.Signal(SIGUSR1);
+        signal_thread->Join();
+        return;
+    }
 
     try {
+        if (CurrentProcess::TerminateReceived()) {
+            battery_thread->Join();
+            g_curr_process.Signal(SIGUSR1);
+            signal_thread->Join();
+            return;
+        }
         state.mutex.Lock();
         while (true) {
             while (!StateChanged(params, state)) {
@@ -422,9 +432,9 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
                 if (!EnterExitSequence(params, state, base, *out_queue,
                                        *in_queue, TunnelDir::OUT, tunnel1,
                                        tunnel2)) {
-                    battery_thread.Join();
+                    battery_thread->Join();
                     g_curr_process.Signal(SIGUSR1);
-                    signal_thread.Join();
+                    signal_thread->Join();
                     return;
                 }
                 GetLogger().Info("Left the base");
@@ -443,9 +453,9 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
                         state.mutex.Lock();
                         continue;
                     }
-                    battery_thread.Join();
+                    battery_thread->Join();
                     g_curr_process.Signal(SIGUSR1);
-                    signal_thread.Join();
+                    signal_thread->Join();
                     return;
                 }
                 GetLogger().Info("Back at the base");
@@ -471,9 +481,9 @@ constexpr void MainThread(const GlobalParameters& params, DroneState& state) {
         LogPrinter::PrintError("drone", e.what());
     }
 
-    battery_thread.Join();
+    battery_thread->Join();
     g_curr_process.Signal(SIGUSR1);
-    signal_thread.Join();
+    signal_thread->Join();
 }
 }  // namespace
 

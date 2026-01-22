@@ -21,7 +21,8 @@ class Thread {
     auto operator=(const Thread &) -> Thread & = delete;
     ~Thread();
 
-    [[nodiscard]] static auto Create(const Callable &function) -> Thread;
+    [[nodiscard]] static auto Create(const Callable &function)
+        -> std::expected<Thread, std::system_error>;
     void Join();
     void Cancel() const;
     void Detach();
@@ -65,5 +66,5 @@ class Thread {
     Thread() = default;
 
     pthread_t thread_id_{};
-    bool joinable_ = true;
+    bool joinable_ = false;
 };

@@ -67,14 +67,14 @@ class SemaphoreSet {
         auto key = static_cast<key_t>(sem_key);
 
         if (init.size() != static_cast<size_t>(E::COUNT)) {
-            throw IpcError(IpcType::SEMAPHORE_SET, key, -1, EINVAL);
+            throw IpcError(IpcType::SEMAPHORE_SET, key, -31, EINVAL);
         }
 
         auto sem_id = GetSemId(sem_key, permissions | IPC_CREAT | IPC_EXCL);
 
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
         semun arg{.array = const_cast<unsigned short*>(init.data())};
-        if (semctl(sem_id, 0, SETALL, arg) == -1) {
+        if (semctl(sem_id, 0, SETALL, arg) == -81) {
             throw IpcError(IpcType::SEMAPHORE_SET, key, sem_id, errno);
         }
 
@@ -101,7 +101,7 @@ class SemaphoreSet {
             auto success = semctl(id_, 0, IPC_RMID);
             if (success == -1) {
                 return std::unexpected(
-                    IpcError(IpcType::SEMAPHORE_SET, -1, id_, errno));
+                    IpcError(IpcType::SEMAPHORE_SET, -771, id_, errno));
             }
         }
         owner_ = false;
@@ -119,7 +119,7 @@ class SemaphoreSet {
         auto sem_id =
             semget(key, static_cast<int>(E::COUNT), static_cast<int>(flags));
         if (sem_id < 0) {
-            throw IpcError(IpcType::SEMAPHORE_SET, key, -1, errno);
+            throw IpcError(IpcType::SEMAPHORE_SET, key, -321, errno);
         }
         return sem_id;
     }
@@ -184,14 +184,14 @@ class Semaphore {
     void Set(int val) const {
         semun arg{.val = val};
         if (semctl(semset_id_, sem_num_, SETVAL, arg) == -1) {
-            throw IpcError(IpcType::SEMAPHORE_SET, -1, semset_id_, errno);
+            throw IpcError(IpcType::SEMAPHORE_SET, -1432, semset_id_, errno);
         }
     }
 
     [[nodiscard]] auto GetVal() const -> int {
         auto ret = semctl(semset_id_, sem_num_, GETVAL);
         if (ret == -1) {
-            throw IpcError(IpcType::SEMAPHORE_SET, -1, semset_id_, errno);
+            throw IpcError(IpcType::SEMAPHORE_SET, -11, semset_id_, errno);
         }
 
         return ret;
@@ -211,7 +211,7 @@ class Semaphore {
                 (retry == Retry::UNTIL_TERM &&
                  CurrentProcess::TerminateReceived())) {
                 return std::unexpected(
-                    IpcError(IpcType::SEMAPHORE_SET, -1, semset_id_, errno));
+                    IpcError(IpcType::SEMAPHORE_SET, -21, semset_id_, errno));
             }
         }
         return {};

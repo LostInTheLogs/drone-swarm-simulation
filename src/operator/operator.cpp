@@ -67,9 +67,19 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
                 return false;
             }
             logger.Debug("Spawning new drone");
-            auto drone = Process::Create({"./drone"});
-            state.drones->Insert(drone.GetPid());
-            drone.Detach();
+
+            try {
+                auto drone = Process::Create({"./drone"});
+                state.drones->Insert(drone.GetPid());
+                drone.Detach();
+            } catch (const std::system_error& error) {
+                logger.Error(
+                    std::format("Couldn't create drone: {}", error.what()));
+                g_curr_process.Signal(SIGTERM);
+                state.free_spots_base.Signal();
+                return false;
+            }
+
             return true;
         };
 
@@ -172,22 +182,22 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
 
         switch (scenario) {
             case INC_DEC_DRONE_COUNT:
-                Thread::Create(scenario_inc_dec_drone_count).Detach();
+                Thread::Create(scenario_inc_dec_drone_count)->Detach();
                 break;
             case PRIORITY_QUEUE:
-                Thread::Create(scenario_priority_queue).Detach();
+                Thread::Create(scenario_priority_queue)->Detach();
                 break;
             case SUICIDE_ORDER:
                 Err(state.mut.LockWrite());
                 state.curr_drone_cap = 0;
                 state.mut.UnlockWrite();
-                Thread::Create(scenario_suicide_order).Detach();
+                Thread::Create(scenario_suicide_order)->Detach();
                 break;
             case DEAD_BAT_IN_TUNNEL:
-                Thread::Create(scenario_dead_bat_in_tunnel).Detach();
+                Thread::Create(scenario_dead_bat_in_tunnel)->Detach();
                 break;
             case TUNNEL_DIR_CHANGE:
-                Thread::Create(scenario_tunnel_dir_change).Detach();
+                Thread::Create(scenario_tunnel_dir_change)->Detach();
                 break;
             case NO_TEST:
             case COUNT:
@@ -219,7 +229,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
                     state.mut.UnlockWrite();
                 }
             });
-        signal_thread.Detach();
+        signal_thread->Detach();
 
         auto reaper_thread = Thread::Create([&]() {
             sigset_t sigset;
@@ -250,7 +260,8 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
                             logger.Error(std::format("Drone {} exited with {}",
                                                      pid, exit_code));
                         }
-                    } else if (WIFSIGNALED(status)) {
+                    } else if (WIFSIGNALED(status) &&
+                               !CurrentProcess::TerminateReceived()) {
                         logger.Error(std::format("Drone {} killed by signal {}",
                                                  pid, WTERMSIG(status)));
                     }
@@ -285,16 +296,16 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
             auto slept = Thread::SleepFor(90ms);
         }
 
+        logger.Warning("Killing all drones...");
         Err(state.mut.LockWrite(Retry::ALWAYS));
         for (size_t i = 0; i < state.drones->Size(); i++) {
             auto drone = Process((*state.drones)[i]);
-            drone.TermWait();
+            drone.Signal(SIGTERM);
         }
-        state.drones->Clear();
         state.mut.UnlockWrite();
 
         g_curr_process.Signal(SIGCHLD);  // wakes up the reaper
-        reaper_thread.Join();
+        reaper_thread->Join();
     } catch (std::exception& e) {
         LogPrinter::PrintError("operator", e.what());
         return 1;
