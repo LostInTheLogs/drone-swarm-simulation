@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unistd.h>
+
 #include <csignal>
 #include <expected>
 #include <span>
