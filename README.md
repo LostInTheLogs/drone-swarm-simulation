@@ -2,11 +2,15 @@
 
 [LostInTheLogs/drone-swarm-simulation](https://github.com/LostInTheLogs/drone-swarm-simulation)
 
-# Jak uruchomić kod
+# Jak skompilować i uruchomić kod
+
+Wymagany c++ 23 z std::fmt, u mnie gcc (GCC) 14.2.1 20241116
 
 ```bash
 cmake -B build && cd build && make
 ./DroneSwarm # symulacja
+# można również uruchomić tak:
+./DroneSwarm 0 E/W/I/D/T # uruchomienie z log level, E - error, W - warning, I - info, D - debug, T - trace
 ./commander # interfejs do zarządzania symulacją
 ```
 
