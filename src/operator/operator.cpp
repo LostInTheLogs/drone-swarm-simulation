@@ -51,12 +51,19 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
         auto sems = SemaphoreSet<SemIds>::Get(SemSetKey::MAIN);
 
         State state{
-            .curr_drone_cap = std::max(1, shm_params->init_drone_count),
+            .curr_drone_cap = shm_params->init_drone_count,
             .drones = ShmDrones::Get(ShmKey::DRONES, drones_arr_size),
             .free_spots_base = Semaphore::Get(sems, SemIds::FREE_SPOTS_BASE),
             .mut = RWMutex::Get<RWMUT_SEMS(DRONES)>(sems)};
 
-        state.free_spots_base.Set(shm_params->max_drones_at_base);
+        auto init_free_spots_at_base = std::min(shm_params->max_drones_at_base,
+                                                shm_params->init_drone_count);
+
+        if (shm_params->scenario != TestScenario::NO_TEST) {
+            init_free_spots_at_base = shm_params->max_drones_at_base;
+        }
+
+        state.free_spots_base.Set(init_free_spots_at_base);
 
         shm_params.Detach();
 
@@ -204,31 +211,57 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int {
                 break;
         }
 
-        auto signal_thread =
-            Thread::Create([&state, drone_lo_cap, drone_hi_cap, &logger]() {
-                sigset_t sigset;
-                sigemptyset(&sigset);
-                sigaddset(&sigset, SIGUSR1);
-                sigaddset(&sigset, SIGUSR2);
+        auto signal_thread = Thread::Create([&state, drone_lo_cap, drone_hi_cap,
+                                             &logger,
+                                             init_free_spots_at_base]() {
+            sigset_t sigset;
+            sigemptyset(&sigset);
+            sigaddset(&sigset, SIGUSR1);
+            sigaddset(&sigset, SIGUSR2);
 
-                while (true) {
-                    int sig{};
-                    sigwait(&sigset, &sig);
-                    if (!state.mut.LockWrite()) {
+            auto max_base_free_spots = init_free_spots_at_base;
+            auto curr_max_base_free_spots = init_free_spots_at_base;
+
+            while (true) {
+                int sig{};
+                sigwait(&sigset, &sig);
+                if (!state.mut.LockWrite()) {
+                    break;
+                }
+
+                if (sig == SIGUSR1) {
+                    state.curr_drone_cap *= 2;
+                } else if (sig == SIGUSR2) {
+                    state.curr_drone_cap /= 2;
+                }
+
+                state.curr_drone_cap = std::clamp(state.curr_drone_cap,
+                                                  drone_lo_cap, drone_hi_cap);
+                logger.Info(std::format("Max drone cap updated to {}",
+                                        state.curr_drone_cap));
+                auto new_free_spots =
+                    std::min(state.curr_drone_cap / 2, max_base_free_spots);
+                state.mut.UnlockWrite();
+
+                if (new_free_spots > curr_max_base_free_spots) {
+                    state.free_spots_base.SignalN(static_cast<short>(
+                        new_free_spots - curr_max_base_free_spots));
+                    logger.Info(std::format(
+                        "Max base free spots increased to {}", new_free_spots));
+                } else if (new_free_spots < curr_max_base_free_spots) {
+                    logger.Info(
+                        std::format("Decreasing max base free spots to {}...",
+                                    new_free_spots));
+                    if (!state.free_spots_base.WaitN(static_cast<short>(
+                            curr_max_base_free_spots - new_free_spots))) {
                         break;
                     }
-                    if (sig == SIGUSR1) {
-                        state.curr_drone_cap *= 2;
-                    } else if (sig == SIGUSR2) {
-                        state.curr_drone_cap /= 2;
-                    }
-                    state.curr_drone_cap = std::clamp(
-                        state.curr_drone_cap, drone_lo_cap, drone_hi_cap);
-                    logger.Info(std::format("Max drone cap updated to {}",
-                                            state.curr_drone_cap));
-                    state.mut.UnlockWrite();
+                    logger.Info(std::format(
+                        "Max base free spots decreased to {}", new_free_spots));
                 }
-            });
+                curr_max_base_free_spots = new_free_spots;
+            }
+        });
         signal_thread->Detach();
 
         auto reaper_thread = Thread::Create([&]() {

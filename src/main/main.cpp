@@ -13,7 +13,6 @@
 #include "logger.h"
 #include "process.h"
 #include "queue.h"
-#include "thread.h"
 
 namespace {
 auto Err(auto&& val) -> decltype(auto) {

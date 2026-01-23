@@ -157,6 +157,18 @@ class Semaphore {
     }
 
     [[nodiscard]]
+    auto WaitN(short count, Retry retry = Retry::UNTIL_TERM, short flags = 0)
+        -> std::expected<void, IpcError> {
+        return SemOp(
+            {
+                .sem_num = sem_num_,
+                .sem_op = static_cast<short>(count * -1),
+                .sem_flg = flags,
+            },
+            retry);
+    }
+
+    [[nodiscard]]
     auto WaitForZero(Retry retry = Retry::UNTIL_TERM, short flags = 0)
         -> std::expected<void, IpcError> {
         return SemOp(
@@ -173,6 +185,20 @@ class Semaphore {
             {
                 .sem_num = sem_num_,
                 .sem_op = 1,
+                .sem_flg = flags,
+            },
+            retry);
+        if (!succes) {
+            throw IpcError(succes.error());
+        }
+    }
+
+    void SignalN(short count, Retry retry = Retry::UNTIL_TERM,
+                 short flags = 0) const {
+        auto succes = SemOp(
+            {
+                .sem_num = sem_num_,
+                .sem_op = count,
                 .sem_flg = flags,
             },
             retry);
